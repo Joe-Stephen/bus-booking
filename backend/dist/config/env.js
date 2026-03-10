@@ -12,7 +12,12 @@ const envSchema = zod_1.z.object({
     PORT: zod_1.z.string().default("5000"),
     DATABASE_URL: zod_1.z.string().url(),
     JWT_SECRET: zod_1.z.string().min(10),
-    JWT_EXPIRES_IN: zod_1.z.string().default("1d"),
+    JWT_EXPIRES_IN: zod_1.z.string().default("15m"),
+    JWT_REFRESH_SECRET: zod_1.z.string().min(10),
+    JWT_REFRESH_EXPIRES_IN: zod_1.z.string().default("7d"),
+    EMAIL_USER: zod_1.z.string().email(),
+    EMAIL_PASS: zod_1.z.string().min(1),
+    GOOGLE_CLIENT_ID: zod_1.z.string().min(1),
 });
 const parsedEnv = envSchema.safeParse(process.env);
 if (!parsedEnv.success) {

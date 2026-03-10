@@ -7,4 +7,7 @@ const auth_schema_1 = require("./auth.schema");
 const router = (0, express_1.Router)();
 router.post("/register", (0, validateRequest_1.validateRequest)(auth_schema_1.registerSchema), auth_controller_1.authController.register);
 router.post("/login", (0, validateRequest_1.validateRequest)(auth_schema_1.loginSchema), auth_controller_1.authController.login);
+router.get("/verify-email", (0, validateRequest_1.validateRequest)(auth_schema_1.verifyEmailSchema), auth_controller_1.authController.verifyEmail);
+router.post("/refresh-token", (0, validateRequest_1.validateRequest)(auth_schema_1.refreshTokenSchema), auth_controller_1.authController.refreshToken);
+router.post("/google", (0, validateRequest_1.validateRequest)(auth_schema_1.googleAuthSchema), auth_controller_1.authController.googleAuth);
 exports.default = router;

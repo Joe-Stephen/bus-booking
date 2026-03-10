@@ -8,7 +8,12 @@ const envSchema = z.object({
   PORT: z.string().default("5000"),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(10),
-  JWT_EXPIRES_IN: z.string().default("1d"),
+  JWT_EXPIRES_IN: z.string().default("15m"),
+  JWT_REFRESH_SECRET: z.string().min(10),
+  JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  EMAIL_USER: z.string().email(),
+  EMAIL_PASS: z.string().min(1),
+  GOOGLE_CLIENT_ID: z.string().min(1),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
