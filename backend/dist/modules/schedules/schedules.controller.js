@@ -65,6 +65,13 @@ const getSchedules = async (req, res) => {
             include: {
                 bus: true,
                 route: true,
+                _count: {
+                    select: {
+                        bookings: {
+                            where: { status: client_1.BookingStatus.BOOKED },
+                        },
+                    },
+                },
             },
             orderBy: { departureTime: "asc" },
         });

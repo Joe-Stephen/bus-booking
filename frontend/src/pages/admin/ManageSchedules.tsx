@@ -123,6 +123,7 @@ export default function ManageSchedules() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Mission Details</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time Windows</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Capacity</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Economics</th>
             </tr>
           </thead>
@@ -147,6 +148,19 @@ export default function ManageSchedules() {
                      <span className="bg-slate-100 px-2 rounded w-fit">DEP: {format(new Date(schedule.departureTime), "MMM d - h:mm a")}</span>
                      <span className="bg-slate-100 px-2 rounded w-fit">ARR: {format(new Date(schedule.arrivalTime), "MMM d - h:mm a")}</span>
                   </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                   <div className="flex items-center gap-2">
+                     <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                       <div 
+                         className="h-full bg-indigo-500 rounded-full" 
+                         style={{ width: `${Math.min(100, ((schedule._count?.bookings || 0) / (schedule.bus?.totalSeats || 1)) * 100)}%` }}
+                       />
+                     </div>
+                     <span className="font-medium text-slate-700">
+                       {schedule._count?.bookings || 0} / {schedule.bus?.totalSeats || 0}
+                     </span>
+                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                    <span className="font-mono text-emerald-600 font-semibold">\${schedule.price}</span> Base Rate

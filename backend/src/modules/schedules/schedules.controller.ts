@@ -75,6 +75,13 @@ export const getSchedules = async (
       include: {
         bus: true,
         route: true,
+        _count: {
+          select: {
+            bookings: {
+              where: { status: BookingStatus.BOOKED },
+            },
+          },
+        },
       },
       orderBy: { departureTime: "asc" },
     });
