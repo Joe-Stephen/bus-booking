@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
+import { requestLogger } from "./middlewares/logger.middleware";
 
 import authRoutes from "./modules/auth/auth.routes";
 import adminRoutes from "./modules/admin/admin.routes";
@@ -19,6 +20,7 @@ const app: Express = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
 
 // API Routes
 app.use("/api/v1/auth", authRoutes);

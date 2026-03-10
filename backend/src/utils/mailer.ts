@@ -15,6 +15,11 @@ export const sendVerificationEmail = async (
 ): Promise<void> => {
   const verifyUrl = `http://localhost:${env.PORT}/api/auth/verify-email?token=${token}`;
 
+  console.log(`\n======================================================`);
+  console.log(`📩 VERIFICATION EMAIL SENT TO: ${to}`);
+  console.log(`🔗 CLICK HERE TO VERIFY: ${verifyUrl}`);
+  console.log(`======================================================\n`);
+
   const mailOptions = {
     from: `"Bus Booking System" <${env.EMAIL_USER}>`,
     to,
@@ -29,9 +34,12 @@ export const sendVerificationEmail = async (
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    if (env.EMAIL_PASS === "your_app_password" || !env.EMAIL_PASS) {
+      console.log("⚠️  Skipping SMTP delivery because EMAIL_PASS is not configured.");
+    } else {
+      await transporter.sendMail(mailOptions);
+    }
   } catch (error) {
-    console.error("Error sending verification email:", error);
-    throw new Error("Failed to send verification email");
+    console.error("⚠️ Failed to send verification email via Nodemailer. Verification link is printed above.");
   }
 };
