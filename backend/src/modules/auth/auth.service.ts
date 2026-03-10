@@ -25,7 +25,7 @@ export const authService = {
       select: { id: true, name: true, email: true, role: true },
     });
 
-    const token = generateToken({ userId: user.id, role: user.role });
+    const token = generateToken({ id: user.id, role: user.role });
 
     return { user, token };
   },
@@ -45,7 +45,7 @@ export const authService = {
       throw new Error("Invalid credentials");
     }
 
-    const token = generateToken({ userId: user.id, role: user.role });
+    const token = generateToken({ id: user.id, role: user.role });
 
     return {
       user: { id: user.id, name: user.name, email: user.email, role: user.role },

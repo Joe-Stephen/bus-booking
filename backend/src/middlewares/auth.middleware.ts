@@ -1,11 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyToken } from "../utils/jwt";
+import { verifyToken, JwtPayload } from "../utils/jwt";
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
+  user?: JwtPayload;
 }
 
 export const requireAuth = (
@@ -20,7 +17,7 @@ export const requireAuth = (
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = verifyToken(token) as { id: string; role: string };
+    const decoded = verifyToken(token);
 
     req.user = decoded;
     next();

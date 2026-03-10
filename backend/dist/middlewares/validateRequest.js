@@ -14,16 +14,18 @@ const validateRequest = (schema) => {
         }
         catch (error) {
             if (error instanceof zod_1.ZodError) {
-                return res.status(400).json({
+                res.status(400).json({
                     status: "error",
                     message: "Validation Error",
                     errors: error.errors.map((e) => ({
-                        path: e.path.join("."),
+                        field: e.path.join("."),
                         message: e.message,
                     })),
                 });
             }
-            next(error);
+            else {
+                next(error);
+            }
         }
     };
 };

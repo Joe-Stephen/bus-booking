@@ -114,7 +114,7 @@ export const cancelBooking = async (
       return;
     }
 
-    const booking = await prisma.booking.findUnique({ where: { id } });
+    const booking = await prisma.booking.findUnique({ where: { id: String(id) } });
     if (!booking) {
       res.status(404).json({ error: "Booking not found" });
       return;
@@ -131,7 +131,7 @@ export const cancelBooking = async (
     }
 
     const updated = await prisma.booking.update({
-      where: { id },
+      where: { id: String(id) },
       data: { status: "CANCELLED" },
     });
 

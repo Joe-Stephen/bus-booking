@@ -40,7 +40,7 @@ const updateBus = async (req, res) => {
         const { id } = req.params;
         const { registrationNo, capacity, features } = req.body;
         const bus = await prisma_1.default.bus.update({
-            where: { id },
+            where: { id: String(id) },
             data: { registrationNo, capacity, features },
         });
         res.json(bus);
@@ -53,7 +53,7 @@ exports.updateBus = updateBus;
 const deleteBus = async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.default.bus.delete({ where: { id } });
+        await prisma_1.default.bus.delete({ where: { id: String(id) } });
         res.json({ message: "Bus deleted successfully" });
     }
     catch (error) {

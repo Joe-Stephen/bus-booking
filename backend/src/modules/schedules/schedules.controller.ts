@@ -92,7 +92,7 @@ export const getScheduleAvailability = async (
     const { id } = req.params;
 
     const schedule = await prisma.schedule.findUnique({
-      where: { id },
+      where: { id: String(id) },
       include: { bus: true },
     });
 
@@ -103,7 +103,7 @@ export const getScheduleAvailability = async (
 
     const bookings = await prisma.booking.aggregate({
       where: {
-        scheduleId: id,
+        scheduleId: String(id),
         status: { in: ["PENDING", "CONFIRMED"] },
       },
       _sum: {

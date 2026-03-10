@@ -25,7 +25,7 @@ exports.authService = {
             },
             select: { id: true, name: true, email: true, role: true },
         });
-        const token = (0, jwt_1.generateToken)({ userId: user.id, role: user.role });
+        const token = (0, jwt_1.generateToken)({ id: user.id, role: user.role });
         return { user, token };
     },
     login: async (data) => {
@@ -39,7 +39,7 @@ exports.authService = {
         if (!isPasswordValid) {
             throw new Error("Invalid credentials");
         }
-        const token = (0, jwt_1.generateToken)({ userId: user.id, role: user.role });
+        const token = (0, jwt_1.generateToken)({ id: user.id, role: user.role });
         return {
             user: { id: user.id, name: user.name, email: user.email, role: user.role },
             token,

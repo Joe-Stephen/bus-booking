@@ -98,7 +98,7 @@ const cancelBooking = async (req, res) => {
             res.status(401).json({ error: "Unauthorized" });
             return;
         }
-        const booking = await prisma_1.default.booking.findUnique({ where: { id } });
+        const booking = await prisma_1.default.booking.findUnique({ where: { id: String(id) } });
         if (!booking) {
             res.status(404).json({ error: "Booking not found" });
             return;
@@ -112,7 +112,7 @@ const cancelBooking = async (req, res) => {
             return;
         }
         const updated = await prisma_1.default.booking.update({
-            where: { id },
+            where: { id: String(id) },
             data: { status: "CANCELLED" },
         });
         res.json(updated);

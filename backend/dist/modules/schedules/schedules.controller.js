@@ -78,7 +78,7 @@ const getScheduleAvailability = async (req, res) => {
     try {
         const { id } = req.params;
         const schedule = await prisma_1.default.schedule.findUnique({
-            where: { id },
+            where: { id: String(id) },
             include: { bus: true },
         });
         if (!schedule) {
@@ -87,7 +87,7 @@ const getScheduleAvailability = async (req, res) => {
         }
         const bookings = await prisma_1.default.booking.aggregate({
             where: {
-                scheduleId: id,
+                scheduleId: String(id),
                 status: { in: ["PENDING", "CONFIRMED"] },
             },
             _sum: {

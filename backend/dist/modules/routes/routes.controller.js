@@ -42,7 +42,7 @@ const updateRoute = async (req, res) => {
         const { id } = req.params;
         const { origin, destination, distance, duration } = req.body;
         const route = await prisma_1.default.route.update({
-            where: { id },
+            where: { id: String(id) },
             data: { origin, destination, distance, duration },
         });
         res.json(route);
@@ -55,7 +55,7 @@ exports.updateRoute = updateRoute;
 const deleteRoute = async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.default.route.delete({ where: { id } });
+        await prisma_1.default.route.delete({ where: { id: String(id) } });
         res.json({ message: "Route deleted successfully" });
     }
     catch (error) {

@@ -38,7 +38,7 @@ export const updateBus = async (req: Request, res: Response): Promise<void> => {
     const { registrationNo, capacity, features } = req.body;
 
     const bus = await prisma.bus.update({
-      where: { id },
+      where: { id: String(id) },
       data: { registrationNo, capacity, features },
     });
 
@@ -51,7 +51,7 @@ export const updateBus = async (req: Request, res: Response): Promise<void> => {
 export const deleteBus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await prisma.bus.delete({ where: { id } });
+    await prisma.bus.delete({ where: { id: String(id) } });
     res.json({ message: "Bus deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete bus" });
