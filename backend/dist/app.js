@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const auth_routes_1 = __importDefault(require("./modules/auth/auth.routes"));
+const admin_routes_1 = __importDefault(require("./modules/admin/admin.routes"));
 const errorHandler_1 = require("./middlewares/errorHandler");
 // Import other routes here as they get refactored
 // import userRoutes from "./modules/users/users.routes";
@@ -18,6 +19,7 @@ app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 // API Routes
 app.use("/api/v1/auth", auth_routes_1.default);
+app.use("/api/v1/admin", admin_routes_1.default);
 // Health Check
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "OK" });

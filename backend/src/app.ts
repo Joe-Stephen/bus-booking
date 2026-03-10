@@ -2,6 +2,7 @@ import express, { Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
 
 import authRoutes from "./modules/auth/auth.routes";
+import adminRoutes from "./modules/admin/admin.routes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 // Import other routes here as they get refactored
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // API Routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 // Health Check
 app.get("/health", (req: Request, res: Response) => {
