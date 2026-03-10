@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../config/prisma";
+import { BookingStatus } from "@prisma/client";
 
 export const createSchedule = async (
   req: Request,
@@ -104,7 +105,7 @@ export const getScheduleAvailability = async (
     const existingBookings = await prisma.booking.count({
       where: {
         scheduleId: String(id),
-        status: "BOOKED",
+        status: BookingStatus.BOOKED,
       },
     });
 
@@ -118,5 +119,29 @@ export const getScheduleAvailability = async (
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch availability" });
+  }
+};
+
+export const getSchedulesByRoute = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const schedules = await prisma.schedule.findMany({
+      where: {
+        routeId: String(id),
+        departureTime: { gt: new Date() }, // Only future schedules
+      },
+      include: {
+        bus: true,
+      },
+      orderBy: { departureTime: "asc" },
+    });
+
+    res.json(schedules);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch schedules" });
   }
 };

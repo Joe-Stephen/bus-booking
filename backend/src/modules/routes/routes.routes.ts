@@ -1,21 +1,11 @@
 import { Router } from "express";
-import {
-  createRoute,
-  getRoutes,
-  updateRoute,
-  deleteRoute,
-} from "./routes.controller";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
+import { getRoutes } from "./routes.controller";
+import { getSchedulesByRoute } from "../schedules/schedules.controller";
 
 const router = Router();
 
-router.get("/", getRoutes); // Accessible to everyone
-
-router.use(requireAuth);
-router.use(requireRole(["ADMIN"]));
-
-router.post("/", createRoute);
-router.put("/:id", updateRoute);
-router.delete("/:id", deleteRoute);
+// Publicly accessible for users dropping into the application
+router.get("/", getRoutes);
+router.get("/:id/schedules", getSchedulesByRoute);
 
 export default router;

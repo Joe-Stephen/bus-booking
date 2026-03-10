@@ -3,8 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getScheduleAvailability = exports.getSchedules = exports.createSchedule = void 0;
+exports.getSchedulesByRoute = exports.getScheduleAvailability = exports.getSchedules = exports.createSchedule = void 0;
 const prisma_1 = __importDefault(require("../../config/prisma"));
+const client_1 = require("@prisma/client");
 const createSchedule = async (req, res) => {
     try {
         const { busId, routeId, departureTime, arrivalTime, price } = req.body;
@@ -88,7 +89,7 @@ const getScheduleAvailability = async (req, res) => {
         const existingBookings = await prisma_1.default.booking.count({
             where: {
                 scheduleId: String(id),
-                status: "BOOKED",
+                status: client_1.BookingStatus.BOOKED,
             },
         });
         const availableSeats = schedule.bus.totalSeats - existingBookings;
@@ -104,3 +105,23 @@ const getScheduleAvailability = async (req, res) => {
     }
 };
 exports.getScheduleAvailability = getScheduleAvailability;
+const getSchedulesByRoute = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const schedules = await prisma_1.default.schedule.findMany({
+            where: {
+                routeId: String(id),
+                departureTime: { gt: new Date() }, // Only future schedules
+            },
+            include: {
+                bus: true,
+            },
+            orderBy: { departureTime: "asc" },
+        });
+        res.json(schedules);
+    }
+    catch (error) {
+        res.status(500).json({ error: "Failed to fetch schedules" });
+    }
+};
+exports.getSchedulesByRoute = getSchedulesByRoute;
