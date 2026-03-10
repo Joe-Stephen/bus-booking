@@ -16,10 +16,11 @@ export default function Login() {
       return res.data;
     },
     onSuccess: (data) => {
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
+      const { accessToken, refreshToken } = data.data;
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
       try {
-        const decoded: any = jwtDecode(data.accessToken);
+        const decoded: any = jwtDecode(accessToken);
         if (decoded.role === "ADMIN") {
           navigate("/admin");
         } else {
@@ -43,7 +44,7 @@ export default function Login() {
         <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center mb-4 text-sm font-medium">
           <AlertCircle className="w-5 h-5 mr-2" />
           {/* @ts-ignore */}
-          {mutation.error.response?.data?.error || "Login failed"}
+          {mutation.error.response?.data?.message || mutation.error.response?.data?.error || "Login failed"}
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-5">

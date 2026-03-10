@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
+import { logError } from "./logger.middleware";
 
 export const errorHandler = (
   err: any,
@@ -8,7 +9,7 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error("error handler caught:", err);
+  logError(`${req.method} ${req.path}`, err);
 
   if (err instanceof ZodError) {
     return res.status(400).json({

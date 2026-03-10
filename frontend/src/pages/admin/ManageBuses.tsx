@@ -6,7 +6,7 @@ import { Plus, Bus as BusIcon } from "lucide-react";
 export default function ManageBuses() {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
-  const [form, setForm] = useState({ registrationNo: "", capacity: 40, features: "AC, WiFi" });
+  const [form, setForm] = useState({ name: "", totalSeats: 40 });
 
   const { data: buses, isLoading } = useQuery({
     queryKey: ["adminBuses"],
@@ -15,17 +15,15 @@ export default function ManageBuses() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
-        ...form,
-        totalSeats: form.capacity,
-        features: form.features.split(",").map(f => f.trim())
-      };
-      await apiClient.post("/admin/bus", payload);
+      await apiClient.post("/admin/bus", {
+        name: form.name,
+        totalSeats: form.totalSeats,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminBuses"] });
       setIsAdding(false);
-      setForm({ registrationNo: "", capacity: 40, features: "AC, WiFi" });
+      setForm({ name: "", totalSeats: 40 });
     }
   });
 
@@ -44,14 +42,15 @@ export default function ManageBuses() {
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4">
           <h3 className="text-lg font-medium text-slate-900 mb-4">Register New Bus</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Registration Number</label>
+              <label className="block text-sm font-medium text-slate-700">Bus Name</label>
               <input
                 type="text"
+                placeholder="e.g. KL-01-AB-1234"
                 className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border outline-none"
-                value={form.registrationNo}
-                onChange={e => setForm({...form, registrationNo: e.target.value})}
+                value={form.name}
+                onChange={e => setForm({...form, name: e.target.value})}
               />
             </div>
             <div>
@@ -60,23 +59,14 @@ export default function ManageBuses() {
                 type="number"
                 min="10"
                 className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border outline-none"
-                value={form.capacity}
-                onChange={e => setForm({...form, capacity: parseInt(e.target.value)})}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Features (comma separated)</label>
-              <input
-                type="text"
-                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border outline-none"
-                value={form.features}
-                onChange={e => setForm({...form, features: e.target.value})}
+                value={form.totalSeats}
+                onChange={e => setForm({...form, totalSeats: parseInt(e.target.value)})}
               />
             </div>
           </div>
           <div className="mt-4 flex justify-end space-x-3">
-            <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm font-medium text-slate-700bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-            <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">Save Bus</button>
+            <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+            <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !form.name} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">Save Bus</button>
           </div>
         </div>
       )}
@@ -103,7 +93,7 @@ export default function ManageBuses() {
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-slate-900">{bus.name}</div>
-                      <div className="text-sm text-slate-500 font-mono">{bus.registrationNo || 'No Plates'}</div>
+                      <div className="text-xs text-slate-400 font-mono">{bus.id.slice(0, 8)}…</div>
                     </div>
                   </div>
                 </td>

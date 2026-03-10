@@ -15,6 +15,10 @@ const transporter = nodemailer_1.default.createTransport({
 });
 const sendVerificationEmail = async (to, token) => {
     const verifyUrl = `http://localhost:${env_1.env.PORT}/api/auth/verify-email?token=${token}`;
+    console.log(`\n======================================================`);
+    console.log(`📩 VERIFICATION EMAIL SENT TO: ${to}`);
+    console.log(`🔗 CLICK HERE TO VERIFY: ${verifyUrl}`);
+    console.log(`======================================================\n`);
     const mailOptions = {
         from: `"Bus Booking System" <${env_1.env.EMAIL_USER}>`,
         to,
@@ -28,11 +32,15 @@ const sendVerificationEmail = async (to, token) => {
     `,
     };
     try {
-        await transporter.sendMail(mailOptions);
+        if (env_1.env.EMAIL_PASS === "your_app_password" || !env_1.env.EMAIL_PASS) {
+            console.log("⚠️  Skipping SMTP delivery because EMAIL_PASS is not configured.");
+        }
+        else {
+            await transporter.sendMail(mailOptions);
+        }
     }
     catch (error) {
-        console.error("Error sending verification email:", error);
-        throw new Error("Failed to send verification email");
+        console.error("⚠️ Failed to send verification email via Nodemailer. Verification link is printed above.");
     }
 };
 exports.sendVerificationEmail = sendVerificationEmail;

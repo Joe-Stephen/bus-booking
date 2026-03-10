@@ -3,8 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.errorHandler = void 0;
 const zod_1 = require("zod");
 const client_1 = require("@prisma/client");
+const logger_middleware_1 = require("./logger.middleware");
 const errorHandler = (err, req, res, next) => {
-    console.error("error handler caught:", err);
+    (0, logger_middleware_1.logError)(`${req.method} ${req.path}`, err);
     if (err instanceof zod_1.ZodError) {
         return res.status(400).json({
             status: "error",

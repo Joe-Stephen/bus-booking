@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.changeSchedule = exports.cancelBooking = exports.getMyBookings = exports.createBooking = void 0;
 const prisma_1 = __importDefault(require("../../config/prisma"));
 const client_1 = require("@prisma/client");
+const logger_middleware_1 = require("../../middlewares/logger.middleware");
 const createBooking = async (req, res) => {
     try {
         const { scheduleId } = req.body;
@@ -15,17 +16,14 @@ const createBooking = async (req, res) => {
             return;
         }
         const booking = await prisma_1.default.$transaction(async (tx) => {
-            // 1. Explicit Row Lock on Schedule to prevent race conditions during concurrent bookings
-            const scheduleRows = await tx.$queryRaw `
-        SELECT id, "busId", "departureTime" 
-        FROM "Schedule" 
-        WHERE id = ${scheduleId}::uuid
-        FOR UPDATE
-      `;
-            if (!scheduleRows || scheduleRows.length === 0) {
+            // 1. Fetch and validate schedule using Prisma (avoids raw SQL uuid cast issues)
+            const schedule = await tx.schedule.findUnique({
+                where: { id: scheduleId },
+                include: { bus: true },
+            });
+            if (!schedule) {
                 throw new Error("SCHEDULE_NOT_FOUND");
             }
-            const schedule = scheduleRows[0];
             if (new Date(schedule.departureTime) < new Date()) {
                 throw new Error("SCHEDULE_UNAVAILABLE");
             }
@@ -33,22 +31,14 @@ const createBooking = async (req, res) => {
             const existingBookings = await tx.booking.count({
                 where: { scheduleId: schedule.id, status: client_1.BookingStatus.BOOKED },
             });
-            // 3. Fetch Bus to get total seats
-            const bus = await tx.bus.findUnique({
-                where: { id: schedule.busId }
-            });
-            if (!bus) {
-                throw new Error("BUS_NOT_FOUND");
-            }
-            const availableSeats = bus.totalSeats - existingBookings;
+            const availableSeats = schedule.bus.totalSeats - existingBookings;
             if (availableSeats < 1) {
                 throw new Error("NOT_ENOUGH_SEATS");
             }
-            // 4. Create Booking
-            const newBooking = await tx.booking.create({
+            // 3. Create Booking
+            return await tx.booking.create({
                 data: { userId, scheduleId: schedule.id, status: client_1.BookingStatus.BOOKED },
             });
-            return newBooking;
         });
         res.status(201).json({ status: "success", data: booking });
     }
@@ -60,6 +50,7 @@ const createBooking = async (req, res) => {
             res.status(400).json({ status: "error", message: "Not enough seats available" });
         }
         else {
+            (0, logger_middleware_1.logError)("createBooking", error);
             res.status(500).json({ status: "error", message: "Failed to create booking" });
         }
     }

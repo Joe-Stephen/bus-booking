@@ -118,14 +118,25 @@ const getSchedulesByRoute = async (req, res) => {
         const schedules = await prisma_1.default.schedule.findMany({
             where: {
                 routeId: String(id),
-                departureTime: { gt: new Date() }, // Only future schedules
             },
             include: {
                 bus: true,
+                route: true,
+                _count: {
+                    select: {
+                        bookings: { where: { status: client_1.BookingStatus.BOOKED } }
+                    }
+                }
             },
             orderBy: { departureTime: "asc" },
         });
-        res.json(schedules);
+        // Add available seats to each schedule
+        const schedulesWithAvailability = schedules.map(s => ({
+            ...s,
+            availableSeats: s.bus.totalSeats - s._count.bookings,
+            isPast: new Date(s.departureTime) < new Date(),
+        }));
+        res.json(schedulesWithAvailability);
     }
     catch (error) {
         res.status(500).json({ error: "Failed to fetch schedules" });

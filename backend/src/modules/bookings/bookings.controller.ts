@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import prisma from "../../config/prisma";
 import { BookingStatus } from "@prisma/client";
+import { logError } from "../../middlewares/logger.middleware";
 
 export const createBooking = async (
   req: AuthRequest,
@@ -17,19 +18,15 @@ export const createBooking = async (
     }
 
     const booking = await prisma.$transaction(async (tx: any) => {
-      // 1. Explicit Row Lock on Schedule to prevent race conditions during concurrent bookings
-      const scheduleRows = await tx.$queryRaw`
-        SELECT id, "busId", "departureTime" 
-        FROM "Schedule" 
-        WHERE id = ${scheduleId}::uuid
-        FOR UPDATE
-      `;
+      // 1. Fetch and validate schedule using Prisma (avoids raw SQL uuid cast issues)
+      const schedule = await tx.schedule.findUnique({
+        where: { id: scheduleId },
+        include: { bus: true },
+      });
 
-      if (!scheduleRows || scheduleRows.length === 0) {
+      if (!schedule) {
         throw new Error("SCHEDULE_NOT_FOUND");
       }
-
-      const schedule = scheduleRows[0];
 
       if (new Date(schedule.departureTime) < new Date()) {
         throw new Error("SCHEDULE_UNAVAILABLE");
@@ -40,27 +37,16 @@ export const createBooking = async (
         where: { scheduleId: schedule.id, status: BookingStatus.BOOKED },
       });
 
-      // 3. Fetch Bus to get total seats
-      const bus = await tx.bus.findUnique({
-        where: { id: schedule.busId }
-      });
-
-      if (!bus) {
-        throw new Error("BUS_NOT_FOUND");
-      }
-
-      const availableSeats = bus.totalSeats - existingBookings;
+      const availableSeats = schedule.bus.totalSeats - existingBookings;
 
       if (availableSeats < 1) {
         throw new Error("NOT_ENOUGH_SEATS");
       }
 
-      // 4. Create Booking
-      const newBooking = await tx.booking.create({
+      // 3. Create Booking
+      return await tx.booking.create({
         data: { userId, scheduleId: schedule.id, status: BookingStatus.BOOKED },
       });
-
-      return newBooking;
     });
 
     res.status(201).json({ status: "success", data: booking });
@@ -70,10 +56,12 @@ export const createBooking = async (
     } else if (error.message === "NOT_ENOUGH_SEATS") {
       res.status(400).json({ status: "error", message: "Not enough seats available" });
     } else {
+      logError("createBooking", error);
       res.status(500).json({ status: "error", message: "Failed to create booking" });
     }
   }
 };
+
 
 export const getMyBookings = async (
   req: AuthRequest,
@@ -181,19 +169,15 @@ export const changeSchedule = async (
     // Process re-schedule via atomic transaction
     const updatedBooking = await prisma.$transaction(async (tx: any) => {
       
-      // Explicit Row Lock on New Schedule to prevent race conditions
-      const scheduleRows = await tx.$queryRaw`
-        SELECT id, "busId", "departureTime" 
-        FROM "Schedule" 
-        WHERE id = ${newScheduleId}::uuid
-        FOR UPDATE
-      `;
+      // Fetch new schedule using Prisma (avoids raw SQL uuid cast issues)
+      const newSchedule = await tx.schedule.findUnique({
+        where: { id: newScheduleId },
+        include: { bus: true },
+      });
 
-      if (!scheduleRows || scheduleRows.length === 0) {
+      if (!newSchedule) {
         throw new Error("NEW_SCHEDULE_NOT_FOUND");
       }
-
-      const newSchedule = scheduleRows[0];
 
       if (new Date(newSchedule.departureTime) < new Date()) {
         throw new Error("NEW_SCHEDULE_UNAVAILABLE");
@@ -203,15 +187,7 @@ export const changeSchedule = async (
         where: { scheduleId: newSchedule.id, status: BookingStatus.BOOKED },
       });
 
-      const bus = await tx.bus.findUnique({
-        where: { id: newSchedule.busId }
-      });
-
-      if (!bus) {
-         throw new Error("BUS_NOT_FOUND");
-      }
-
-      const availableSeats = bus.totalSeats - existingBookings;
+      const availableSeats = newSchedule.bus.totalSeats - existingBookings;
 
       if (availableSeats < 1) {
         throw new Error("NOT_ENOUGH_SEATS_NEW");
