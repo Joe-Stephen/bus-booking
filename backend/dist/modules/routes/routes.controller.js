@@ -7,17 +7,17 @@ exports.deleteRoute = exports.updateRoute = exports.getRoutes = exports.createRo
 const prisma_1 = __importDefault(require("../../config/prisma"));
 const createRoute = async (req, res) => {
     try {
-        const { origin, destination, distance, duration } = req.body;
+        const { source, destination, distance } = req.body;
         // Simple check if route exists, optional
         const existing = await prisma_1.default.route.findFirst({
-            where: { origin, destination },
+            where: { source, destination },
         });
         if (existing) {
             res.status(400).json({ error: "This route already exists" });
             return;
         }
         const route = await prisma_1.default.route.create({
-            data: { origin, destination, distance, duration },
+            data: { source, destination, distance },
         });
         res.status(201).json(route);
     }
@@ -40,10 +40,10 @@ exports.getRoutes = getRoutes;
 const updateRoute = async (req, res) => {
     try {
         const { id } = req.params;
-        const { origin, destination, distance, duration } = req.body;
+        const { source, destination, distance } = req.body;
         const route = await prisma_1.default.route.update({
             where: { id: String(id) },
-            data: { origin, destination, distance, duration },
+            data: { source, destination, distance },
         });
         res.json(route);
     }

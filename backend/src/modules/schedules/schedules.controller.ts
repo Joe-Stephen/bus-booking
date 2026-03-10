@@ -101,23 +101,19 @@ export const getScheduleAvailability = async (
       return;
     }
 
-    const bookings = await prisma.booking.aggregate({
+    const existingBookings = await prisma.booking.count({
       where: {
         scheduleId: String(id),
-        status: { in: ["PENDING", "CONFIRMED"] },
-      },
-      _sum: {
-        seatCount: true,
+        status: "BOOKED",
       },
     });
 
-    const totalSeatsBooked = bookings._sum.seatCount || 0;
-    const availableSeats = schedule.bus.capacity - totalSeatsBooked;
+    const availableSeats = schedule.bus.totalSeats - existingBookings;
 
     res.json({
       scheduleId: id,
-      capacity: schedule.bus.capacity,
-      booked: totalSeatsBooked,
+      capacity: schedule.bus.totalSeats,
+      booked: existingBookings,
       available: availableSeats,
     });
   } catch (error) {

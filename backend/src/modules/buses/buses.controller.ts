@@ -3,18 +3,18 @@ import prisma from "../../config/prisma";
 
 export const createBus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { registrationNo, capacity, features } = req.body;
+    const { name, totalSeats } = req.body;
 
-    const existing = await prisma.bus.findUnique({ where: { registrationNo } });
+    const existing = await prisma.bus.findFirst({ where: { name } });
     if (existing) {
       res
         .status(400)
-        .json({ error: "Bus with this registration number already exists" });
+        .json({ error: "Bus with this name already exists" });
       return;
     }
 
     const bus = await prisma.bus.create({
-      data: { registrationNo, capacity, features },
+      data: { name, totalSeats },
     });
 
     res.status(201).json(bus);
@@ -35,11 +35,11 @@ export const getBuses = async (req: Request, res: Response): Promise<void> => {
 export const updateBus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { registrationNo, capacity, features } = req.body;
+    const { name, totalSeats } = req.body;
 
     const bus = await prisma.bus.update({
       where: { id: String(id) },
-      data: { registrationNo, capacity, features },
+      data: { name, totalSeats },
     });
 
     res.json(bus);

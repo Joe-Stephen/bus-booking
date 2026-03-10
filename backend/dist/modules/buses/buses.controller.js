@@ -7,16 +7,16 @@ exports.deleteBus = exports.updateBus = exports.getBuses = exports.createBus = v
 const prisma_1 = __importDefault(require("../../config/prisma"));
 const createBus = async (req, res) => {
     try {
-        const { registrationNo, capacity, features } = req.body;
-        const existing = await prisma_1.default.bus.findUnique({ where: { registrationNo } });
+        const { name, totalSeats } = req.body;
+        const existing = await prisma_1.default.bus.findFirst({ where: { name } });
         if (existing) {
             res
                 .status(400)
-                .json({ error: "Bus with this registration number already exists" });
+                .json({ error: "Bus with this name already exists" });
             return;
         }
         const bus = await prisma_1.default.bus.create({
-            data: { registrationNo, capacity, features },
+            data: { name, totalSeats },
         });
         res.status(201).json(bus);
     }
@@ -38,10 +38,10 @@ exports.getBuses = getBuses;
 const updateBus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { registrationNo, capacity, features } = req.body;
+        const { name, totalSeats } = req.body;
         const bus = await prisma_1.default.bus.update({
             where: { id: String(id) },
-            data: { registrationNo, capacity, features },
+            data: { name, totalSeats },
         });
         res.json(bus);
     }

@@ -7,7 +7,7 @@ export const createBooking = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { scheduleId, seatCount } = req.body;
+    const { scheduleId } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -26,33 +26,27 @@ export const createBooking = async (
         throw new Error("SCHEDULE_NOT_FOUND");
       }
 
-      // Aggregate confirmed/pending bookings
-      const existingBookings = await tx.booking.aggregate({
+      // Count current bookings for this schedule
+      const existingBookings = await tx.booking.count({
         where: {
           scheduleId,
-          status: { in: ["PENDING", "CONFIRMED"] },
-        },
-        _sum: {
-          seatCount: true,
+          status: "BOOKED",
         },
       });
 
-      const totalSeatsBooked = existingBookings._sum.seatCount || 0;
-      const availableSeats = schedule.bus.capacity - totalSeatsBooked;
+      const availableSeats = schedule.bus.totalSeats - existingBookings;
 
-      if (seatCount > availableSeats) {
+      if (availableSeats < 1) {
         throw new Error("NOT_ENOUGH_SEATS");
       }
 
-      const totalPrice = schedule.price * seatCount;
+
 
       const newBooking = await tx.booking.create({
         data: {
           userId,
           scheduleId,
-          seatCount,
-          totalPrice,
-          status: "CONFIRMED", // Set to confirmed directly since no payment flow yet
+          status: "BOOKED", 
         },
       });
 
@@ -92,7 +86,7 @@ export const getMyBookings = async (
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { bookedAt: "desc" },
     });
 
     res.json(bookings);

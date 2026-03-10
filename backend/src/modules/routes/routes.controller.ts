@@ -6,11 +6,11 @@ export const createRoute = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { origin, destination, distance, duration } = req.body;
+    const { source, destination, distance } = req.body;
 
     // Simple check if route exists, optional
     const existing = await prisma.route.findFirst({
-      where: { origin, destination },
+      where: { source, destination },
     });
 
     if (existing) {
@@ -19,7 +19,7 @@ export const createRoute = async (
     }
 
     const route = await prisma.route.create({
-      data: { origin, destination, distance, duration },
+      data: { source, destination, distance },
     });
 
     res.status(201).json(route);
@@ -44,11 +44,11 @@ export const updateRoute = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { origin, destination, distance, duration } = req.body;
+    const { source, destination, distance } = req.body;
 
     const route = await prisma.route.update({
       where: { id: String(id) },
-      data: { origin, destination, distance, duration },
+      data: { source, destination, distance },
     });
 
     res.json(route);

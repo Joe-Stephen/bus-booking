@@ -19,7 +19,7 @@ export const authService = {
       data: {
         name: data.name,
         email: data.email,
-        passwordHash: hashedPassword,
+        password: hashedPassword,
         role: "USER", // Default role
       },
       select: { id: true, name: true, email: true, role: true },
@@ -35,11 +35,11 @@ export const authService = {
       where: { email: data.email },
     });
 
-    if (!user || !user.passwordHash) {
+    if (!user || !user.password) {
       throw new Error("Invalid credentials");
     }
 
-    const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(data.password, user.password!);
 
     if (!isPasswordValid) {
       throw new Error("Invalid credentials");
