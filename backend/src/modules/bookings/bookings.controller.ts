@@ -17,27 +17,47 @@ export const createBooking = async (
     }
 
     const booking = await prisma.$transaction(async (tx: any) => {
-      const schedule = await tx.schedule.findUnique({
-        where: { id: scheduleId },
-        include: { bus: true },
-      });
+      // 1. Explicit Row Lock on Schedule to prevent race conditions during concurrent bookings
+      const scheduleRows = await tx.$queryRaw`
+        SELECT id, "busId", "departureTime" 
+        FROM "Schedule" 
+        WHERE id = ${scheduleId}::uuid
+        FOR UPDATE
+      `;
 
-      if (!schedule || schedule.departureTime < new Date()) {
+      if (!scheduleRows || scheduleRows.length === 0) {
+        throw new Error("SCHEDULE_NOT_FOUND");
+      }
+
+      const schedule = scheduleRows[0];
+
+      if (new Date(schedule.departureTime) < new Date()) {
         throw new Error("SCHEDULE_UNAVAILABLE");
       }
 
+      // 2. Count existing active bookings
       const existingBookings = await tx.booking.count({
-        where: { scheduleId, status: BookingStatus.BOOKED },
+        where: { scheduleId: schedule.id, status: BookingStatus.BOOKED },
       });
 
-      const availableSeats = schedule.bus.totalSeats - existingBookings;
+      // 3. Fetch Bus to get total seats
+      const bus = await tx.bus.findUnique({
+        where: { id: schedule.busId }
+      });
+
+      if (!bus) {
+        throw new Error("BUS_NOT_FOUND");
+      }
+
+      const availableSeats = bus.totalSeats - existingBookings;
 
       if (availableSeats < 1) {
         throw new Error("NOT_ENOUGH_SEATS");
       }
 
+      // 4. Create Booking
       const newBooking = await tx.booking.create({
-        data: { userId, scheduleId, status: BookingStatus.BOOKED },
+        data: { userId, scheduleId: schedule.id, status: BookingStatus.BOOKED },
       });
 
       return newBooking;
@@ -45,7 +65,7 @@ export const createBooking = async (
 
     res.status(201).json({ status: "success", data: booking });
   } catch (error: any) {
-    if (error.message === "SCHEDULE_UNAVAILABLE") {
+    if (error.message === "SCHEDULE_NOT_FOUND" || error.message === "SCHEDULE_UNAVAILABLE") {
       res.status(404).json({ status: "error", message: "Schedule not found or already departed" });
     } else if (error.message === "NOT_ENOUGH_SEATS") {
       res.status(400).json({ status: "error", message: "Not enough seats available" });
@@ -160,20 +180,38 @@ export const changeSchedule = async (
 
     // Process re-schedule via atomic transaction
     const updatedBooking = await prisma.$transaction(async (tx: any) => {
-      const newSchedule = await tx.schedule.findUnique({
-        where: { id: newScheduleId },
-        include: { bus: true },
-      });
+      
+      // Explicit Row Lock on New Schedule to prevent race conditions
+      const scheduleRows = await tx.$queryRaw`
+        SELECT id, "busId", "departureTime" 
+        FROM "Schedule" 
+        WHERE id = ${newScheduleId}::uuid
+        FOR UPDATE
+      `;
 
-      if (!newSchedule || newSchedule.departureTime < new Date()) {
+      if (!scheduleRows || scheduleRows.length === 0) {
+        throw new Error("NEW_SCHEDULE_NOT_FOUND");
+      }
+
+      const newSchedule = scheduleRows[0];
+
+      if (new Date(newSchedule.departureTime) < new Date()) {
         throw new Error("NEW_SCHEDULE_UNAVAILABLE");
       }
 
       const existingBookings = await tx.booking.count({
-        where: { scheduleId: newScheduleId, status: BookingStatus.BOOKED },
+        where: { scheduleId: newSchedule.id, status: BookingStatus.BOOKED },
       });
 
-      const availableSeats = newSchedule.bus.totalSeats - existingBookings;
+      const bus = await tx.bus.findUnique({
+        where: { id: newSchedule.busId }
+      });
+
+      if (!bus) {
+         throw new Error("BUS_NOT_FOUND");
+      }
+
+      const availableSeats = bus.totalSeats - existingBookings;
 
       if (availableSeats < 1) {
         throw new Error("NOT_ENOUGH_SEATS_NEW");
@@ -181,13 +219,13 @@ export const changeSchedule = async (
 
       return await tx.booking.update({
         where: { id: String(id) },
-        data: { scheduleId: newScheduleId },
+        data: { scheduleId: newSchedule.id },
       });
     });
 
     res.status(200).json({ status: "success", data: updatedBooking });
   } catch (error: any) {
-    if (error.message === "NEW_SCHEDULE_UNAVAILABLE") {
+    if (error.message === "NEW_SCHEDULE_NOT_FOUND" || error.message === "NEW_SCHEDULE_UNAVAILABLE") {
       res.status(404).json({ status: "error", message: "New schedule not found or already departed" });
     } else if (error.message === "NOT_ENOUGH_SEATS_NEW") {
       res.status(400).json({ status: "error", message: "Not enough seats available on the new schedule" });
