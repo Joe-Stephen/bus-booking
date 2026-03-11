@@ -10,7 +10,9 @@ export const initializeSocket = (httpServer: HttpServer): SocketIOServer => {
     },
   });
 
-  io.on("connection", handleConnection);
+  io.on("connection", (socket) => {
+    handleConnection(socket, io);
+  });
 
   return io;
 };

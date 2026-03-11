@@ -10,7 +10,9 @@ const initializeSocket = (httpServer) => {
             methods: ["GET", "POST", "PUT", "DELETE"],
         },
     });
-    io.on("connection", socketHandlers_1.handleConnection);
+    io.on("connection", (socket) => {
+        (0, socketHandlers_1.handleConnection)(socket, io);
+    });
     return io;
 };
 exports.initializeSocket = initializeSocket;
