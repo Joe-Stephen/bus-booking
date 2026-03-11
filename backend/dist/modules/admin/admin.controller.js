@@ -169,7 +169,17 @@ exports.adminController = {
     getSchedules: async (req, res, next) => {
         try {
             const schedules = await prisma_1.default.schedule.findMany({
-                include: { bus: true, route: true },
+                include: {
+                    bus: true,
+                    route: true,
+                    _count: {
+                        select: {
+                            bookings: {
+                                where: { status: "BOOKED" }
+                            }
+                        }
+                    }
+                },
                 orderBy: { departureTime: "asc" }
             });
             res.status(200).json({ status: "success", data: schedules });
