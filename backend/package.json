@@ -7,7 +7,8 @@
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "start": "tsc && node dist/server.js",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts",
+    "simulate": "ts-node scripts/busSimulator.ts"
   },
   "keywords": [],
   "author": "",
