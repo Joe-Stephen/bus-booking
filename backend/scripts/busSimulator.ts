@@ -1,5 +1,6 @@
-import { io } from "socket.io-client";
+const { io } = require("socket.io-client");
 import { PrismaClient } from "@prisma/client";
+import { generateToken } from "../src/utils/jwt";
 
 const prisma = new PrismaClient();
 
@@ -33,7 +34,12 @@ async function startSimulation() {
 
   console.log(`Targeting Bus: ${bus.name} (ID: ${bus.id})`);
 
-  const socket = io(SERVER_URL);
+  // Generate a mock driver token to bypass role-based admission in socket server
+  const token = generateToken({ id: `sim-${bus.id}`, role: "DRIVER" });
+
+  const socket = io(SERVER_URL, {
+    auth: { token }
+  });
 
   socket.on("connect", () => {
     console.log(`Connected to Socket server at ${SERVER_URL}`);
@@ -66,7 +72,7 @@ async function startSimulation() {
     }, 3000);
   });
 
-  socket.on("connect_error", (err) => {
+  socket.on("connect_error", (err: any) => {
     console.error(`Socket connection error: ${err.message}`);
   });
 }

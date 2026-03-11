@@ -14,7 +14,7 @@ const validateRequest = (schema) => {
         }
         catch (error) {
             if (error instanceof zod_1.ZodError) {
-                res.status(400).json({
+                return res.status(400).json({
                     status: "error",
                     message: "Validation Error",
                     errors: error.errors.map((e) => ({
