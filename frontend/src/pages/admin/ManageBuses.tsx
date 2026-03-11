@@ -6,6 +6,7 @@ import { Plus, Bus as BusIcon } from "lucide-react";
 export default function ManageBuses() {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
+  const [editingBusId, setEditingBusId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", totalSeats: 40 });
 
   const { data: buses, isLoading } = useQuery({
@@ -27,12 +28,51 @@ export default function ManageBuses() {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.put(`/admin/bus/${editingBusId}`, {
+        name: form.name,
+        totalSeats: form.totalSeats,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminBuses"] });
+      setIsAdding(false);
+      setEditingBusId(null);
+      setForm({ name: "", totalSeats: 40 });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/admin/bus/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminBuses"] });
+    }
+  });
+
+  const handleEdit = (bus: any) => {
+    setForm({ name: bus.name, totalSeats: bus.totalSeats });
+    setEditingBusId(bus.id);
+    setIsAdding(true);
+  };
+
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingBusId(null);
+    setForm({ name: "", totalSeats: 40 });
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Manage Fleet</h1>
         <button
-          onClick={() => setIsAdding(!isAdding)}
+          onClick={() => {
+            setIsAdding(!isAdding);
+            if (isAdding) handleCancel();
+          }}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <Plus className="w-4 h-4 mr-2" /> Add Bus
@@ -41,7 +81,7 @@ export default function ManageBuses() {
 
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4">
-          <h3 className="text-lg font-medium text-slate-900 mb-4">Register New Bus</h3>
+          <h3 className="text-lg font-medium text-slate-900 mb-4">{editingBusId ? "Edit Bus" : "Register New Bus"}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700">Bus Name</label>
@@ -65,8 +105,10 @@ export default function ManageBuses() {
             </div>
           </div>
           <div className="mt-4 flex justify-end space-x-3">
-            <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-            <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !form.name} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">Save Bus</button>
+            <button onClick={handleCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+            <button onClick={() => editingBusId ? updateMutation.mutate() : createMutation.mutate()} disabled={createMutation.isPending || updateMutation.isPending || !form.name} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              {editingBusId ? "Update Bus" : "Save Bus"}
+            </button>
           </div>
         </div>
       )}
@@ -79,6 +121,7 @@ export default function ManageBuses() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Capacity</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Features</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Added On</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
@@ -107,6 +150,10 @@ export default function ManageBuses() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                   {new Date(bus.createdAt).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button onClick={() => handleEdit(bus)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
+                  <button onClick={() => { if(confirm('Are you sure you want to delete this bus?')) deleteMutation.mutate(bus.id) }} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}

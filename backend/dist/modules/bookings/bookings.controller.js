@@ -139,30 +139,21 @@ const changeSchedule = async (req, res) => {
         }
         // Process re-schedule via atomic transaction
         const updatedBooking = await prisma_1.default.$transaction(async (tx) => {
-            // Explicit Row Lock on New Schedule to prevent race conditions
-            const scheduleRows = await tx.$queryRaw `
-        SELECT id, "busId", "departureTime" 
-        FROM "Schedule" 
-        WHERE id = ${newScheduleId}::uuid
-        FOR UPDATE
-      `;
-            if (!scheduleRows || scheduleRows.length === 0) {
+            // Fetch new schedule using Prisma (avoids raw SQL uuid cast issues)
+            const newSchedule = await tx.schedule.findUnique({
+                where: { id: newScheduleId },
+                include: { bus: true },
+            });
+            if (!newSchedule) {
                 throw new Error("NEW_SCHEDULE_NOT_FOUND");
             }
-            const newSchedule = scheduleRows[0];
             if (new Date(newSchedule.departureTime) < new Date()) {
                 throw new Error("NEW_SCHEDULE_UNAVAILABLE");
             }
             const existingBookings = await tx.booking.count({
                 where: { scheduleId: newSchedule.id, status: client_1.BookingStatus.BOOKED },
             });
-            const bus = await tx.bus.findUnique({
-                where: { id: newSchedule.busId }
-            });
-            if (!bus) {
-                throw new Error("BUS_NOT_FOUND");
-            }
-            const availableSeats = bus.totalSeats - existingBookings;
+            const availableSeats = newSchedule.bus.totalSeats - existingBookings;
             if (availableSeats < 1) {
                 throw new Error("NOT_ENOUGH_SEATS_NEW");
             }

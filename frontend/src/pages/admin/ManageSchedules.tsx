@@ -7,6 +7,7 @@ import { format } from "date-fns";
 export default function ManageSchedules() {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [form, setForm] = useState({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0 });
 
   const { data: schedules, isLoading } = useQuery({
@@ -33,12 +34,65 @@ export default function ManageSchedules() {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.put(`/admin/schedule/${editingScheduleId}`, {
+          ...form,
+          departureTime: new Date(form.departureTime).toISOString(),
+          arrivalTime: new Date(form.arrivalTime).toISOString(),
+          price: Number(form.price)
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
+      setIsAdding(false);
+      setEditingScheduleId(null);
+      setForm({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0 });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/admin/schedule/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
+    }
+  });
+
+  const handleEdit = (schedule: any) => {
+    // Convert dates to local datetime-local format for input
+    const toLocalDatetime = (dateString: string) => {
+      const d = new Date(dateString);
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    };
+
+    setForm({ 
+      busId: schedule.busId, 
+      routeId: schedule.routeId, 
+      departureTime: toLocalDatetime(schedule.departureTime), 
+      arrivalTime: toLocalDatetime(schedule.arrivalTime), 
+      price: schedule.price 
+    });
+    setEditingScheduleId(schedule.id);
+    setIsAdding(true);
+  };
+
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingScheduleId(null);
+    setForm({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0 });
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Dispatch Schedules</h1>
         <button
-          onClick={() => setIsAdding(!isAdding)}
+          onClick={() => {
+            setIsAdding(!isAdding);
+            if (isAdding) handleCancel();
+          }}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <Plus className="w-4 h-4 mr-2" /> Assign Schedule
@@ -47,13 +101,13 @@ export default function ManageSchedules() {
 
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4 overflow-visible">
-          <h3 className="text-lg font-medium text-slate-900 mb-4">Launch Route Schedule</h3>
+          <h3 className="text-lg font-medium text-slate-900 mb-4">{editingScheduleId ? "Edit Route Schedule" : "Launch Route Schedule"}</h3>
           
-          {createMutation.isError && (
+          {(createMutation.isError || updateMutation.isError) && (
             <div className="mb-4 bg-red-50 p-3 rounded-lg border border-red-100 flex items-start text-sm text-red-600">
                <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
                {/* @ts-ignore */}
-               <span>{createMutation.error.response?.data?.message || createMutation.error.response?.data?.error || "Failed to create schedule. Check overlaps or past times."}</span>
+               <span>{(createMutation.error || updateMutation.error).response?.data?.message || (createMutation.error || updateMutation.error).response?.data?.error || "Failed to save schedule. Check overlaps or past times."}</span>
             </div>
           )}
 
@@ -111,8 +165,10 @@ export default function ManageSchedules() {
             </div>
           </div>
           <div className="mt-6 flex justify-end space-x-3 border-t border-slate-100 pt-4">
-            <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-            <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !form.busId || !form.routeId} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">Deploy Schedule</button>
+            <button onClick={handleCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+            <button onClick={() => editingScheduleId ? updateMutation.mutate() : createMutation.mutate()} disabled={createMutation.isPending || updateMutation.isPending || !form.busId || !form.routeId} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              {editingScheduleId ? "Update Schedule" : "Deploy Schedule"}
+            </button>
           </div>
         </div>
       )}
@@ -125,6 +181,7 @@ export default function ManageSchedules() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time Windows</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Capacity</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Economics</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
@@ -163,7 +220,11 @@ export default function ManageSchedules() {
                    </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                   <span className="font-mono text-emerald-600 font-semibold">\${schedule.price}</span> Base Rate
+                   <span className="font-mono text-emerald-600 font-semibold">${schedule.price}</span> Base Rate
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button onClick={() => handleEdit(schedule)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
+                  <button onClick={() => { if(confirm('Are you sure you want to delete this schedule?')) deleteMutation.mutate(schedule.id) }} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}

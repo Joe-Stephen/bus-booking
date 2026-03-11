@@ -32,6 +32,30 @@ exports.adminController = {
             next(error);
         }
     },
+    updateBus: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { name, totalSeats } = req.body;
+            const bus = await prisma_1.default.bus.update({
+                where: { id: String(id) },
+                data: { name, totalSeats },
+            });
+            res.status(200).json({ status: "success", data: bus });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    deleteBus: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            await prisma_1.default.bus.delete({ where: { id: String(id) } });
+            res.status(200).json({ status: "success", message: "Bus deleted successfully" });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
     // --- Routes ---
     createRoute: async (req, res, next) => {
         try {
@@ -55,6 +79,30 @@ exports.adminController = {
         try {
             const routes = await prisma_1.default.route.findMany();
             res.status(200).json({ status: "success", data: routes });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    updateRoute: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { source, destination, distance } = req.body;
+            const route = await prisma_1.default.route.update({
+                where: { id: String(id) },
+                data: { source, destination, distance },
+            });
+            res.status(200).json({ status: "success", data: route });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    deleteRoute: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            await prisma_1.default.route.delete({ where: { id: String(id) } });
+            res.status(200).json({ status: "success", message: "Route deleted successfully" });
         }
         catch (error) {
             next(error);
@@ -125,6 +173,65 @@ exports.adminController = {
                 orderBy: { departureTime: "asc" }
             });
             res.status(200).json({ status: "success", data: schedules });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    updateSchedule: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { busId, routeId, departureTime, arrivalTime, price } = req.body;
+            const parsedDepartureOffset = new Date(departureTime);
+            const parsedArrivalOffset = new Date(arrivalTime);
+            // Check for overlap in existing schedules for the SAME bus (ignore self)
+            const overlapSchedule = await prisma_1.default.schedule.findFirst({
+                where: {
+                    busId,
+                    id: { not: String(id) },
+                    OR: [
+                        {
+                            departureTime: { lte: parsedDepartureOffset },
+                            arrivalTime: { gte: parsedDepartureOffset }
+                        },
+                        {
+                            departureTime: { lte: parsedArrivalOffset },
+                            arrivalTime: { gte: parsedArrivalOffset }
+                        },
+                        {
+                            departureTime: { gte: parsedDepartureOffset },
+                            arrivalTime: { lte: parsedArrivalOffset }
+                        }
+                    ]
+                }
+            });
+            if (overlapSchedule) {
+                return res.status(400).json({
+                    status: "error",
+                    message: "Bus is already scheduled for another route during this time."
+                });
+            }
+            const schedule = await prisma_1.default.schedule.update({
+                where: { id: String(id) },
+                data: {
+                    busId,
+                    routeId,
+                    departureTime: parsedDepartureOffset,
+                    arrivalTime: parsedArrivalOffset,
+                    price,
+                },
+            });
+            res.status(200).json({ status: "success", data: schedule });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    deleteSchedule: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            await prisma_1.default.schedule.delete({ where: { id: String(id) } });
+            res.status(200).json({ status: "success", message: "Schedule deleted successfully" });
         }
         catch (error) {
             next(error);

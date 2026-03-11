@@ -27,3 +27,36 @@ export const createScheduleSchema = z.object({
     path: ["arrivalTime"],
   }),
 });
+
+export const updateBusSchema = z.object({
+  body: z.object({
+    name: z.string().min(1, "Bus name is required").optional(),
+    totalSeats: z.number().int().min(1, "Total seats must be greater than 0").optional(),
+  }),
+});
+
+export const updateRouteSchema = z.object({
+  body: z.object({
+    source: z.string().min(1, "Source is required").optional(),
+    destination: z.string().min(1, "Destination is required").optional(),
+    distance: z.number().positive("Distance must be a positive number").optional(),
+  }),
+});
+
+export const updateScheduleSchema = z.object({
+  body: z.object({
+    busId: z.string().uuid("Invalid bus ID format").optional(),
+    routeId: z.string().uuid("Invalid route ID format").optional(),
+    departureTime: z.string().datetime("Must be a valid ISO 8601 date string").optional(),
+    arrivalTime: z.string().datetime("Must be a valid ISO 8601 date string").optional(),
+    price: z.number().positive("Price must be a positive number").optional(),
+  }).refine((data) => {
+    if (data.arrivalTime && data.departureTime) {
+      return new Date(data.arrivalTime) > new Date(data.departureTime);
+    }
+    return true;
+  }, {
+    message: "Arrival time must be after departure time",
+    path: ["arrivalTime"],
+  }),
+});

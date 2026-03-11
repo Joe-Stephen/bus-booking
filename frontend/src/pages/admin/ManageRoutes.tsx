@@ -6,6 +6,7 @@ import { Plus, MapPin } from "lucide-react";
 export default function ManageRoutes() {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
+  const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
   const [form, setForm] = useState({ source: "", destination: "", distance: 0 });
 
   const { data: routes, isLoading } = useQuery({
@@ -28,12 +29,52 @@ export default function ManageRoutes() {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.put(`/admin/route/${editingRouteId}`, {
+         source: form.source,
+         destination: form.destination,
+         distance: form.distance
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminRoutes"] });
+      setIsAdding(false);
+      setEditingRouteId(null);
+      setForm({ source: "", destination: "", distance: 0 });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/admin/route/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminRoutes"] });
+    }
+  });
+
+  const handleEdit = (route: any) => {
+    setForm({ source: route.source, destination: route.destination, distance: route.distance });
+    setEditingRouteId(route.id);
+    setIsAdding(true);
+  };
+
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingRouteId(null);
+    setForm({ source: "", destination: "", distance: 0 });
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Manage Transit Routes</h1>
         <button
-          onClick={() => setIsAdding(!isAdding)}
+          onClick={() => {
+            setIsAdding(!isAdding);
+            if (isAdding) handleCancel();
+          }}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <Plus className="w-4 h-4 mr-2" /> Add Route
@@ -42,7 +83,7 @@ export default function ManageRoutes() {
 
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4">
-          <h3 className="text-lg font-medium text-slate-900 mb-4">Define New Logistics Route</h3>
+          <h3 className="text-lg font-medium text-slate-900 mb-4">{editingRouteId ? "Edit Logistics Route" : "Define New Logistics Route"}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700">Source City / Terminal</label>
@@ -76,8 +117,10 @@ export default function ManageRoutes() {
             </div>
           </div>
           <div className="mt-4 flex justify-end space-x-3">
-            <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-            <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">Save Route</button>
+            <button onClick={handleCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+            <button onClick={() => editingRouteId ? updateMutation.mutate() : createMutation.mutate()} disabled={createMutation.isPending || updateMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              {editingRouteId ? "Update Route" : "Save Route"}
+            </button>
           </div>
         </div>
       )}
@@ -89,6 +132,7 @@ export default function ManageRoutes() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Pathing Data</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Metric Distance</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Generated</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
@@ -114,6 +158,10 @@ export default function ManageRoutes() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                   {new Date(route.createdAt).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button onClick={() => handleEdit(route)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
+                  <button onClick={() => { if(confirm('Are you sure you want to delete this route?')) deleteMutation.mutate(route.id) }} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}
