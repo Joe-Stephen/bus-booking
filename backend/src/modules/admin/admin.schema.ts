@@ -35,6 +35,12 @@ export const updateBusSchema = z.object({
   }),
 });
 
+export const updateBusTrackingSchema = z.object({
+  body: z.object({
+    enabled: z.boolean(),
+  }),
+});
+
 export const updateRouteSchema = z.object({
   body: z.object({
     source: z.string().min(1, "Source is required").optional(),

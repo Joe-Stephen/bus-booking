@@ -32,12 +32,13 @@ model User {
 }
 
 model Bus {
-  id          String       @id @default(uuid())
-  name        String
-  totalSeats  Int
-  createdAt   DateTime     @default(now())
-  schedules   Schedule[]
-  busLocation BusLocation?
+  id                String       @id @default(uuid())
+  name              String
+  totalSeats        Int
+  isTrackingEnabled Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  schedules         Schedule[]
+  busLocation       BusLocation?
 }
 
 model Route {

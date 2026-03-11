@@ -7,6 +7,7 @@ import {
   createRouteSchema, 
   createScheduleSchema,
   updateBusSchema,
+  updateBusTrackingSchema,
   updateRouteSchema,
   updateScheduleSchema
 } from "./admin.schema";
@@ -21,6 +22,7 @@ router.use(requireRole(["ADMIN"]));
 router.post("/bus", validateRequest(createBusSchema), adminController.createBus);
 router.get("/buses", adminController.getBuses);
 router.put("/bus/:id", validateRequest(updateBusSchema), adminController.updateBus);
+router.patch("/bus/:id/tracking", validateRequest(updateBusTrackingSchema), adminController.updateBusTracking);
 router.delete("/bus/:id", adminController.deleteBus);
 
 // Routes

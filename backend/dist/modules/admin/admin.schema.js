@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateScheduleSchema = exports.updateRouteSchema = exports.updateBusSchema = exports.createScheduleSchema = exports.createRouteSchema = exports.createBusSchema = void 0;
+exports.updateScheduleSchema = exports.updateRouteSchema = exports.updateBusTrackingSchema = exports.updateBusSchema = exports.createScheduleSchema = exports.createRouteSchema = exports.createBusSchema = void 0;
 const zod_1 = require("zod");
 exports.createBusSchema = zod_1.z.object({
     body: zod_1.z.object({
@@ -31,6 +31,11 @@ exports.updateBusSchema = zod_1.z.object({
     body: zod_1.z.object({
         name: zod_1.z.string().min(1, "Bus name is required").optional(),
         totalSeats: zod_1.z.number().int().min(1, "Total seats must be greater than 0").optional(),
+    }),
+});
+exports.updateBusTrackingSchema = zod_1.z.object({
+    body: zod_1.z.object({
+        enabled: zod_1.z.boolean(),
     }),
 });
 exports.updateRouteSchema = zod_1.z.object({

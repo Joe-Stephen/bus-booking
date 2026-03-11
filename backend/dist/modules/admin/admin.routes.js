@@ -13,6 +13,7 @@ router.use((0, auth_middleware_1.requireRole)(["ADMIN"]));
 router.post("/bus", (0, validateRequest_1.validateRequest)(admin_schema_1.createBusSchema), admin_controller_1.adminController.createBus);
 router.get("/buses", admin_controller_1.adminController.getBuses);
 router.put("/bus/:id", (0, validateRequest_1.validateRequest)(admin_schema_1.updateBusSchema), admin_controller_1.adminController.updateBus);
+router.patch("/bus/:id/tracking", (0, validateRequest_1.validateRequest)(admin_schema_1.updateBusTrackingSchema), admin_controller_1.adminController.updateBusTracking);
 router.delete("/bus/:id", admin_controller_1.adminController.deleteBus);
 // Routes
 router.post("/route", (0, validateRequest_1.validateRequest)(admin_schema_1.createRouteSchema), admin_controller_1.adminController.createRoute);

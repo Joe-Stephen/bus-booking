@@ -56,6 +56,23 @@ exports.adminController = {
             next(error);
         }
     },
+    updateBusTracking: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { enabled } = req.body;
+            const bus = await prisma_1.default.bus.update({
+                where: { id: String(id) },
+                data: { isTrackingEnabled: enabled },
+            });
+            res.status(200).json({ status: "success", data: bus });
+        }
+        catch (error) {
+            if (error.code === "P2025") {
+                return res.status(404).json({ status: "error", message: "Bus not found" });
+            }
+            next(error);
+        }
+    },
     // --- Routes ---
     createRoute: async (req, res, next) => {
         try {
