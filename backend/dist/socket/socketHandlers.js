@@ -30,8 +30,8 @@ const handleConnection = (socket, io) => {
                     heading: heading ? Number(heading) : null,
                 },
             });
-            // Broadcast location to all connected clients
-            io.emit("bus:location:broadcast", {
+            // Broadcast location to clients subscribed to this bus
+            io.to(`bus-${upsertedLocation.busId}`).emit("bus:location:broadcast", {
                 busId: upsertedLocation.busId,
                 latitude: upsertedLocation.latitude,
                 longitude: upsertedLocation.longitude,
@@ -41,6 +41,13 @@ const handleConnection = (socket, io) => {
         }
         catch (error) {
             console.error("Error updating bus location via socket:", error);
+        }
+    });
+    socket.on("bus:subscribe", (data) => {
+        if (data && data.busId) {
+            const roomName = `bus-${data.busId}`;
+            socket.join(roomName);
+            console.log(`Socket ${socket.id} subscribed to ${roomName}`);
         }
     });
     socket.on("disconnect", () => {
