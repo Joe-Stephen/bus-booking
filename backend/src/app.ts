@@ -8,6 +8,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import routesRoutes from "./modules/routes/routes.routes";
 import bookingsRoutes from "./modules/bookings/bookings.routes";
 import schedulesRoutes from "./modules/schedules/schedules.routes";
+import trackingRoutes from "./modules/tracking/tracking.routes";
 
 // Import other routes here as they get refactored
 // import userRoutes from "./modules/users/users.routes";
@@ -28,6 +29,7 @@ app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/routes", routesRoutes);
 app.use("/api/v1/bookings", bookingsRoutes);
 app.use("/api/v1/schedules", schedulesRoutes);
+app.use("/api/v1/tracking", trackingRoutes);
 
 // Health Check
 app.get("/health", (req: Request, res: Response) => {
