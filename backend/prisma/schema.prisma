@@ -32,11 +32,12 @@ model User {
 }
 
 model Bus {
-  id         String     @id @default(uuid())
-  name       String
-  totalSeats Int
-  createdAt  DateTime   @default(now())
-  schedules  Schedule[]
+  id          String       @id @default(uuid())
+  name        String
+  totalSeats  Int
+  createdAt   DateTime     @default(now())
+  schedules   Schedule[]
+  busLocation BusLocation?
 }
 
 model Route {
@@ -69,4 +70,16 @@ model Booking {
 
   user     User     @relation(fields: [userId], references: [id])
   schedule Schedule @relation(fields: [scheduleId], references: [id])
+}
+
+model BusLocation {
+  id        String   @id @default(uuid())
+  busId     String   @unique
+  latitude  Float
+  longitude Float
+  speed     Float?
+  heading   Float?
+  updatedAt DateTime @updatedAt
+
+  bus Bus @relation(fields: [busId], references: [id], onDelete: Cascade)
 }
