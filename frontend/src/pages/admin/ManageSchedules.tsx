@@ -207,15 +207,20 @@ export default function ManageSchedules() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                   <div className="flex items-center gap-2">
-                     <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                       <div 
-                         className="h-full bg-indigo-500 rounded-full" 
-                         style={{ width: `${Math.min(100, ((schedule._count?.bookings || 0) / (schedule.bus?.totalSeats || 1)) * 100)}%` }}
-                       />
+                   <div className="flex flex-col gap-1">
+                     <div className="flex items-center gap-2">
+                       <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                         <div 
+                           className="h-full bg-indigo-500 rounded-full" 
+                           style={{ width: `${Math.min(100, ((schedule._count?.bookings || 0) / (schedule.bus?.totalSeats || 1)) * 100)}%` }}
+                         />
+                       </div>
+                       <span className="font-medium text-slate-700">
+                         {schedule._count?.bookings || 0} / {schedule.bus?.totalSeats || 0} Booked
+                       </span>
                      </div>
-                     <span className="font-medium text-slate-700">
-                       {schedule._count?.bookings || 0} / {schedule.bus?.totalSeats || 0}
+                     <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded w-fit">
+                       Available: {Math.max(0, (schedule.bus?.totalSeats || 0) - (schedule._count?.bookings || 0))}
                      </span>
                    </div>
                 </td>
