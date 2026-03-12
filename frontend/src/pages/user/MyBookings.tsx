@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
-import { CalendarDays, XCircle, Clock, RefreshCw } from "lucide-react";
+import { CalendarDays, XCircle, Clock, RefreshCw, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
+import BusTrackingMap from "../../components/BusTrackingMap";
 
 export default function MyBookings() {
   const queryClient = useQueryClient();
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [changingBooking, setChangingBooking] = useState<any>(null);
+  const [trackingBookingId, setTrackingBookingId] = useState<string | null>(null);
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ["myBookings"],
@@ -56,6 +58,10 @@ export default function MyBookings() {
     }
   };
 
+  const toggleTracking = (bookingId: string) => {
+    setTrackingBookingId(prev => prev === bookingId ? null : bookingId);
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">My Bookings history</h1>
@@ -77,63 +83,96 @@ export default function MyBookings() {
            {bookings?.data?.map((booking: any) => {
              const isPast = new Date(booking.schedule.departureTime) < new Date();
              const isCancelled = booking.status === "CANCELLED";
+             const isActiveBooking = !isPast && !isCancelled;
+             const busId = booking.schedule?.bus?.id;
+             const isTrackingOpen = trackingBookingId === booking.id;
 
              return (
-              <div key={booking.id} className={`bg-white rounded-2xl shadow-sm border ${isCancelled ? 'border-red-200' : 'border-gray-100'} overflow-hidden flex flex-col sm:flex-row hover:shadow-md transition-shadow`}>
-                <div className="p-6 flex-1">
-                  <div className="flex items-start justify-between">
-                     <div>
-                        <div className="flex items-center mb-2">
-                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mr-3 ${
-                             isCancelled ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                           }`}>
-                             {booking.status}
-                           </span>
-                           <span className="text-xs text-gray-500 flex items-center">
-                              <Clock className="w-3 h-3 mr-1" /> Booked: {format(new Date(booking.bookedAt), "MMM d, yyyy")}
-                           </span>
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900">
-                          {booking.schedule.route.source} → {booking.schedule.route.destination}
-                        </h3>
-                     </div>
+              <div key={booking.id} className={`bg-white rounded-2xl shadow-sm border ${isCancelled ? 'border-red-200' : 'border-gray-100'} overflow-hidden transition-shadow hover:shadow-md`}>
+
+                {/* Main booking row */}
+                <div className="flex flex-col sm:flex-row">
+                  <div className="p-6 flex-1">
+                    <div className="flex items-start justify-between">
+                       <div>
+                          <div className="flex items-center mb-2">
+                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mr-3 ${
+                               isCancelled ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                             }`}>
+                               {booking.status}
+                             </span>
+                             <span className="text-xs text-gray-500 flex items-center">
+                                <Clock className="w-3 h-3 mr-1" /> Booked: {format(new Date(booking.bookedAt), "MMM d, yyyy")}
+                             </span>
+                          </div>
+                          <h3 className="text-xl font-bold text-gray-900">
+                            {booking.schedule.route.source} → {booking.schedule.route.destination}
+                          </h3>
+                          {booking.schedule?.bus?.name && (
+                            <p className="text-sm text-gray-500 mt-0.5">Bus: {booking.schedule.bus.name}</p>
+                          )}
+                       </div>
+                    </div>
+                    
+                    <div className="mt-4 flex flex-col sm:flex-row sm:items-center text-sm text-gray-600 gap-y-2 sm:gap-x-6">
+                       <div>
+                          <span className="font-semibold text-gray-900 block">Departure</span>
+                          {format(new Date(booking.schedule.departureTime), "MMM d, yyyy - h:mm a")}
+                       </div>
+                       <div>
+                          <span className="font-semibold text-gray-900 block">Arrival</span>
+                          {format(new Date(booking.schedule.arrivalTime), "MMM d, yyyy - h:mm a")}
+                       </div>
+                    </div>
                   </div>
                   
-                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center text-sm text-gray-600 gap-y-2 sm:gap-x-6">
-                     <div>
-                        <span className="font-semibold text-gray-900 block">Departure</span>
-                        {format(new Date(booking.schedule.departureTime), "MMM d, yyyy - h:mm a")}
-                     </div>
-                     <div>
-                        <span className="font-semibold text-gray-900 block">Arrival</span>
-                        {format(new Date(booking.schedule.arrivalTime), "MMM d, yyyy - h:mm a")}
-                     </div>
+                  <div className="px-6 py-4 bg-gray-50 border-t sm:border-t-0 sm:border-l border-gray-100 flex flex-col justify-center gap-2 sm:w-48">
+                    {isActiveBooking ? (
+                      <>
+                        {busId && (
+                          <button
+                            onClick={() => toggleTracking(booking.id)}
+                            className="w-full inline-flex justify-center items-center px-4 py-2 border border-emerald-200 text-sm font-medium rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                          >
+                            <MapPin className="w-4 h-4 mr-2" />
+                            Track Bus
+                            {isTrackingOpen
+                              ? <ChevronUp className="w-4 h-4 ml-auto" />
+                              : <ChevronDown className="w-4 h-4 ml-auto" />
+                            }
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setChangingBooking(booking)}
+                          className="w-full inline-flex justify-center items-center px-4 py-2 border border-indigo-200 text-sm font-medium rounded-xl text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" /> Change Time
+                        </button>
+                        <button
+                          onClick={() => handleCancel(booking.id)}
+                          disabled={cancelingId === booking.id}
+                          className="w-full inline-flex justify-center items-center px-4 py-2 border border-red-200 text-sm font-medium rounded-xl text-red-700 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+                        >
+                          {cancelingId === booking.id ? "Canceling..." : <><XCircle className="w-4 h-4 mr-2" /> Cancel</>}
+                        </button>
+                      </>
+                    ) : isCancelled ? (
+                       <span className="text-sm font-medium text-red-600">Cancelled</span>
+                    ) : (
+                       <span className="text-sm font-medium text-gray-500">Trip Completed</span>
+                    )}
                   </div>
                 </div>
-                
-                <div className="px-6 py-4 bg-gray-50 border-t sm:border-t-0 sm:border-l border-gray-100 flex flex-col justify-center gap-2 sm:w-48">
-                  {!isPast && !isCancelled ? (
-                    <>
-                      <button
-                        onClick={() => setChangingBooking(booking)}
-                        className="w-full inline-flex justify-center items-center px-4 py-2 border border-indigo-200 text-sm font-medium rounded-xl text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" /> Change Time
-                      </button>
-                      <button
-                        onClick={() => handleCancel(booking.id)}
-                        disabled={cancelingId === booking.id}
-                        className="w-full inline-flex justify-center items-center px-4 py-2 border border-red-200 text-sm font-medium rounded-xl text-red-700 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
-                      >
-                        {cancelingId === booking.id ? "Canceling..." : <><XCircle className="w-4 h-4 mr-2" /> Cancel</>}
-                      </button>
-                    </>
-                  ) : isCancelled ? (
-                     <span className="text-sm font-medium text-red-600">Cancelled</span>
-                  ) : (
-                     <span className="text-sm font-medium text-gray-500">Trip Completed</span>
-                  )}
-                </div>
+
+                {/* Collapsible Live Map */}
+                {isTrackingOpen && busId && (
+                  <div className="border-t border-gray-100 p-4 bg-gray-50">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Live Bus Location
+                    </p>
+                    <BusTrackingMap busId={busId} />
+                  </div>
+                )}
               </div>
              );
            })}
