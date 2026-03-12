@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import prisma from "../config/prisma";
+import { snapToRoad } from "../utils/mapMatching";
 
 const rateLimits = new Map<string, number>();
 
@@ -38,19 +39,24 @@ export const handleConnection = (socket: Socket, io: Server) => {
         return;
       }
 
+      // Snap to nearest road (falls back to raw coords if OSRM fails)
+      const snapped = await snapToRoad(lat, lng);
+      const finalLat = snapped.latitude;
+      const finalLng = snapped.longitude;
+
       // Upsert latest location into the database
       const upsertedLocation = await prisma.busLocation.upsert({
         where: { busId: String(busId) },
         update: {
-          latitude: lat,
-          longitude: lng,
+          latitude: finalLat,
+          longitude: finalLng,
           speed: speed ? Number(speed) : null,
           heading: heading ? Number(heading) : null,
         },
         create: {
           busId: String(busId),
-          latitude: lat,
-          longitude: lng,
+          latitude: finalLat,
+          longitude: finalLng,
           speed: speed ? Number(speed) : null,
           heading: heading ? Number(heading) : null,
         },
@@ -63,6 +69,7 @@ export const handleConnection = (socket: Socket, io: Server) => {
         longitude: upsertedLocation.longitude,
         speed: upsertedLocation.speed,
         updatedAt: upsertedLocation.updatedAt,
+        snapped: snapped.snapped,
       });
 
     } catch (error) {
