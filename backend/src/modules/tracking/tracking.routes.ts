@@ -5,6 +5,6 @@ import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
 const router = Router();
 
 router.get("/bus/:busId", trackingController.getBusLocation);
-router.post("/bus/:busId", requireAuth, requireRole(["ADMIN"]), trackingController.updateBusLocation);
+router.post("/bus/:busId", requireAuth, requireRole(["ADMIN", "DRIVER"]), trackingController.updateBusLocation);
 
 export default router;

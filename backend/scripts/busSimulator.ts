@@ -8,24 +8,25 @@ const SERVER_URL = process.env.SOCKET_URL || "ws://localhost:5000";
 
 // A mock route in New York grid
 const mockRoute = [
-  [40.7128, -74.0060], // Start
-  [40.7130, -74.0050],
-  [40.7135, -74.0040],
-  [40.7140, -74.0030],
-  [40.7145, -74.0020],
-  [40.7150, -74.0010],
-  [40.7155, -74.0000],
-  [40.7160, -73.9990],
-  [40.7165, -73.9980],
+  [10.004542, 76.375369], // Start 10.004542, 76.375369
+  [10.004528, 76.37508], //10.004528, 76.375080
+  [10.004522, 76.374902], //10.004522, 76.374902
+  [10.004514, 76.374734], //10.004514, 76.374734
+  [10.004476, 76.374464], //10.004476, 76.374464
+  [10.004447, 76.374244], //10.004447, 76.374244
+  [10.004683, 76.374136], //10.004683, 76.374136
+  [10.005007, 76.374179], //10.005007, 76.374179
+  [10.005037, 76.37378], //10.005037, 76.373780
 ];
 
 async function startSimulation() {
   console.log("Starting Bus Location Simulator...");
-  
+
   // Try to find an existing bus to track
-  const bus = await prisma.bus.findFirst({
-    where: { isTrackingEnabled: true }
-  }) || await prisma.bus.findFirst();
+  const bus =
+    (await prisma.bus.findFirst({
+      where: { isTrackingEnabled: true },
+    })) || (await prisma.bus.findFirst());
 
   if (!bus) {
     console.error("No buses found in the database. Please create a bus first.");
@@ -38,7 +39,7 @@ async function startSimulation() {
   const token = generateToken({ id: `sim-${bus.id}`, role: "DRIVER" });
 
   const socket = io(SERVER_URL, {
-    auth: { token }
+    auth: { token },
   });
 
   socket.on("connect", () => {
@@ -46,7 +47,7 @@ async function startSimulation() {
     console.log("Beginning simulated transmission sequence...");
 
     let currentIndex = 0;
-    
+
     // Simulate real-time movement updating every 3 seconds
     setInterval(() => {
       // Loop the route endlessly
@@ -62,11 +63,13 @@ async function startSimulation() {
         busId: bus.id,
         latitude,
         longitude,
-        speed
+        speed,
       };
 
       socket.emit("bus:location:update", payload);
-      console.log(`[SIMULATOR] Transmitted -> Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}, Speed: ${speed}mph`);
+      console.log(
+        `[SIMULATOR] Transmitted -> Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}, Speed: ${speed}mph`,
+      );
 
       currentIndex++;
     }, 3000);

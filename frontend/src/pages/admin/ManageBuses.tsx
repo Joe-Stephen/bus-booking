@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
 import { Plus, Bus as BusIcon, MapPin, ChevronDown, ChevronUp, Navigation, Clock } from "lucide-react";
+import { socket } from "../../services/socket";
 
 export default function ManageBuses() {
   const queryClient = useQueryClient();
@@ -174,7 +175,7 @@ export default function ManageBuses() {
                 {locationPanelBusId === bus.id && (
                   <tr key={`loc-${bus.id}`}>
                     <td colSpan={5} className="px-6 py-0 bg-slate-50">
-                      <BusLocationPanel busId={bus.id} busName={bus.name} />
+                      <BusLocationPanel busId={bus.id} />
                     </td>
                   </tr>
                 )}
@@ -189,10 +190,97 @@ export default function ManageBuses() {
 
 // ─── Location Panel Sub-component ─────────────────────────────────────────────
 
-function BusLocationPanel({ busId, busName }: { busId: string; busName: string }) {
+function BusLocationPanel({ busId }: { busId: string }) {
   const queryClient = useQueryClient();
   const [locationForm, setLocationForm] = useState({ latitude: "", longitude: "", speed: "" });
   const [submitMsg, setSubmitMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [autoSave, setAutoSave] = useState(false);
+  const [watchId, setWatchId] = useState<number | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const isTracking = watchId !== null;
+
+  // Clean up the watcher if the panel is collapsed/unmounted mid-track
+  useEffect(() => {
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [watchId]);
+
+  const startLiveTracking = () => {
+    if (!navigator.geolocation) {
+      setLiveError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLiveError(null);
+    const id = navigator.geolocation.watchPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const spd = position.coords.speed; // m/s or null
+        socket.emit("bus:location:update", {
+          busId,
+          latitude: lat,
+          longitude: lng,
+          speed: spd != null ? parseFloat((spd * 2.237).toFixed(1)) : null, // convert m/s → mph
+        });
+        // Also keep form fields in sync so "Open in Maps" reflects live pos
+        setLocationForm(f => ({
+          ...f,
+          latitude: lat.toFixed(6),
+          longitude: lng.toFixed(6),
+        }));
+      },
+      (err) => {
+        stopLiveTracking();
+        if (err.code === err.PERMISSION_DENIED) {
+          setLiveError("Location permission denied. Please allow access and try again.");
+        } else {
+          setLiveError("Could not track location. Try again.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+    setWatchId(id);
+  };
+
+  const stopLiveTracking = () => {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      setWatchId(null);
+    }
+  };
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setGeoLoading(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        setLocationForm(f => ({ ...f, latitude: lat, longitude: lng }));
+        setGeoLoading(false);
+        if (autoSave) {
+          // Pass coords directly — state update hasn't flushed yet
+          setLocationMutation.mutate({ latitude: lat, longitude: lng });
+        }
+      },
+      (err) => {
+        setGeoLoading(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setGeoError("Location permission denied. Please allow access and try again.");
+        } else {
+          setGeoError("Unable to retrieve your location. Please enter it manually.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const { data: locationData, isLoading, error } = useQuery({
     queryKey: ["busLocation", busId],
@@ -206,16 +294,28 @@ function BusLocationPanel({ busId, busName }: { busId: string; busName: string }
   });
 
   const setLocationMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (overrideCoords?: { latitude: string; longitude: string }) => {
+      const lat = overrideCoords ? overrideCoords.latitude : locationForm.latitude;
+      const lng = overrideCoords ? overrideCoords.longitude : locationForm.longitude;
       const payload: any = {
-        latitude: parseFloat(locationForm.latitude),
-        longitude: parseFloat(locationForm.longitude),
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lng),
       };
       if (locationForm.speed) payload.speed = parseFloat(locationForm.speed);
       const res = await apiClient.post(`/tracking/bus/${busId}`, payload);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Emit WebSocket event so live-tracking map updates instantly
+      const loc = data?.data;
+      if (loc) {
+        socket.emit("bus:location:update", {
+          busId,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          speed: loc.speed ?? null,
+        });
+      }
       setSubmitMsg({ type: "success", text: "Location updated!" });
       queryClient.invalidateQueries({ queryKey: ["busLocation", busId] });
       setTimeout(() => setSubmitMsg(null), 3000);
@@ -282,20 +382,83 @@ function BusLocationPanel({ busId, busName }: { busId: string; busName: string }
           )}
         </div>
 
-        {/* ── Set Test Location Form ── */}
+        {/* ── Live Tracking Section ── */}
+        <div>
+          <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
+            <span className="relative flex h-2.5 w-2.5">
+              {isTracking && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />}
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isTracking ? "bg-red-500" : "bg-slate-300"}`} />
+            </span>
+            Live Tracking
+            {isTracking && <span className="text-xs font-bold text-red-600 ml-1">● LIVE</span>}
+          </h4>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+            {!isTracking ? (
+              <button
+                type="button"
+                onClick={startLiveTracking}
+                className="w-full flex items-center justify-center gap-2 py-3 sm:py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
+              >
+                📡 Start Live Tracking
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={stopLiveTracking}
+                className="w-full flex items-center justify-center gap-2 py-3 sm:py-2 text-sm font-semibold text-white bg-slate-600 hover:bg-slate-700 rounded-xl transition-colors"
+              >
+                ⏹ Stop Live Tracking
+              </button>
+            )}
+            {isTracking && (
+              <p className="text-xs text-slate-500 text-center">
+                Broadcasting position via WebSocket every time the device moves.
+              </p>
+            )}
+            {liveError && (
+              <p className="text-xs font-medium text-red-600">{liveError}</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Set / Update Location Form ── */}
         <div>
           <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
             <MapPin className="w-4 h-4 text-indigo-600" /> Set / Update Location
           </h4>
           <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            {/* ── Use My Location button ── */}
+            <button
+              type="button"
+              onClick={handleUseMyLocation}
+              disabled={geoLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 sm:py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-colors disabled:opacity-60"
+            >
+              {geoLoading ? (
+                <>
+                  <svg className="animate-spin w-4 h-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Fetching GPS location...
+                </>
+              ) : (
+                <>📍 Use My Current Location</>
+              )}
+            </button>
+
+            {geoError && (
+              <p className="text-xs font-medium text-red-600">{geoError}</p>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Latitude</label>
                 <input
                   type="number"
                   step="0.000001"
                   placeholder="e.g. 12.9716"
-                  className="w-full text-sm rounded-lg border border-slate-300 px-3 py-1.5 outline-none focus:border-indigo-400"
+                  className="w-full text-sm rounded-xl border border-slate-300 px-3 py-3 sm:py-2 outline-none focus:border-indigo-400"
                   value={locationForm.latitude}
                   onChange={e => setLocationForm(f => ({ ...f, latitude: e.target.value }))}
                 />
@@ -306,7 +469,7 @@ function BusLocationPanel({ busId, busName }: { busId: string; busName: string }
                   type="number"
                   step="0.000001"
                   placeholder="e.g. 77.5946"
-                  className="w-full text-sm rounded-lg border border-slate-300 px-3 py-1.5 outline-none focus:border-indigo-400"
+                  className="w-full text-sm rounded-xl border border-slate-300 px-3 py-3 sm:py-2 outline-none focus:border-indigo-400"
                   value={locationForm.longitude}
                   onChange={e => setLocationForm(f => ({ ...f, longitude: e.target.value }))}
                 />
@@ -318,11 +481,44 @@ function BusLocationPanel({ busId, busName }: { busId: string; busName: string }
                 type="number"
                 step="0.1"
                 placeholder="e.g. 55"
-                className="w-full text-sm rounded-lg border border-slate-300 px-3 py-1.5 outline-none focus:border-indigo-400"
+                className="w-full text-sm rounded-xl border border-slate-300 px-3 py-3 sm:py-2 outline-none focus:border-indigo-400"
                 value={locationForm.speed}
                 onChange={e => setLocationForm(f => ({ ...f, speed: e.target.value }))}
               />
             </div>
+
+            {locationForm.latitude && locationForm.longitude && (
+              <a
+                href={`https://www.google.com/maps?q=${locationForm.latitude},${locationForm.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-1.5 py-3 sm:py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors"
+              >
+                🗺️ Open in Google Maps
+              </a>
+            )}
+
+            {/* ── Auto Save Toggle ── */}
+            <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
+              <span className="text-xs font-medium text-slate-600">
+                Auto Save After Fetching Location
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoSave}
+                onClick={() => setAutoSave(v => !v)}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                  autoSave ? "bg-indigo-600" : "bg-slate-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
+                    autoSave ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </label>
 
             {submitMsg && (
               <p className={`text-xs font-medium ${submitMsg.type === "success" ? "text-emerald-600" : "text-red-600"}`}>
@@ -331,9 +527,9 @@ function BusLocationPanel({ busId, busName }: { busId: string; busName: string }
             )}
 
             <button
-              onClick={() => setLocationMutation.mutate()}
+              onClick={() => setLocationMutation.mutate(undefined)}
               disabled={setLocationMutation.isPending || !locationForm.latitude || !locationForm.longitude}
-              className="w-full py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors"
+              className="w-full py-3 sm:py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl disabled:opacity-50 transition-colors"
             >
               {setLocationMutation.isPending ? "Saving..." : "Save Location"}
             </button>
