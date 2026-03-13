@@ -13,7 +13,7 @@ export const sendVerificationEmail = async (
   to: string,
   token: string,
 ): Promise<void> => {
-  const verifyUrl = `http://localhost:${env.PORT}/api/auth/verify-email?token=${token}`;
+  const verifyUrl = `http://localhost:${env.PORT}/api/v1/auth/verify-email?token=${token}`;
 
   console.log(`\n======================================================`);
   console.log(`📩 VERIFICATION EMAIL SENT TO: ${to}`);
