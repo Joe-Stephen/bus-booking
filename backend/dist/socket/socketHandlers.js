@@ -5,7 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleConnection = void 0;
 const prisma_1 = __importDefault(require("../config/prisma"));
+const mapMatching_1 = require("../utils/mapMatching");
 const rateLimits = new Map();
+// Per-bus cache of the last OSRM-snapped coordinate
+const snapCache = new Map();
+const SNAP_CACHE_RADIUS_M = 10;
 const handleConnection = (socket, io) => {
     console.log(`User connected: ${socket.id}`);
     socket.on("bus:location:update", async (data) => {
@@ -35,19 +39,52 @@ const handleConnection = (socket, io) => {
                 console.warn(`Invalid coordinates received for bus ${busId}: [${lat}, ${lng}]`);
                 return;
             }
+            // 4. Jitter filter: ignore updates where the bus hasn't moved >= 5 m
+            const JITTER_THRESHOLD_M = 5;
+            const prevLocation = await prisma_1.default.busLocation.findUnique({
+                where: { busId: String(busId) },
+            });
+            if (prevLocation) {
+                const dist = (0, mapMatching_1.calculateDistance)(prevLocation.latitude, prevLocation.longitude, lat, lng);
+                if (dist < JITTER_THRESHOLD_M) {
+                    return; // Treat as stationary — skip update
+                }
+            }
+            // 5. Road-snap cache: reuse previous snapped coord if raw GPS moved < 10 m
+            const cached = snapCache.get(String(busId));
+            let snapped;
+            if (cached && (0, mapMatching_1.calculateDistance)(cached.latitude, cached.longitude, lat, lng) < SNAP_CACHE_RADIUS_M) {
+                // Raw GPS hasn't strayed outside the cached snap zone — reuse it
+                snapped = { latitude: cached.latitude, longitude: cached.longitude, snapped: true };
+            }
+            else {
+                // 6. Call OSRM for a fresh snap, then update the cache
+                snapped = await (0, mapMatching_1.snapToRoad)(lat, lng);
+                if (snapped.snapped) {
+                    snapCache.set(String(busId), { latitude: snapped.latitude, longitude: snapped.longitude });
+                }
+            }
+            const finalLat = snapped.latitude;
+            const finalLng = snapped.longitude;
+            // 7. Log map-matching result
+            const correctionM = (0, mapMatching_1.calculateDistance)(lat, lng, finalLat, finalLng).toFixed(1);
+            console.log(`[Tracking] Bus ${busId}\n` +
+                `  GPS:     ${lat.toFixed(6)},${lng.toFixed(6)}\n` +
+                `  Snapped: ${finalLat.toFixed(6)},${finalLng.toFixed(6)}\n` +
+                `  Correction: ${correctionM} m${snapped.snapped ? "" : " (OSRM fallback — raw GPS used)"}`);
             // Upsert latest location into the database
             const upsertedLocation = await prisma_1.default.busLocation.upsert({
                 where: { busId: String(busId) },
                 update: {
-                    latitude: lat,
-                    longitude: lng,
+                    latitude: finalLat,
+                    longitude: finalLng,
                     speed: speed ? Number(speed) : null,
                     heading: heading ? Number(heading) : null,
                 },
                 create: {
                     busId: String(busId),
-                    latitude: lat,
-                    longitude: lng,
+                    latitude: finalLat,
+                    longitude: finalLng,
                     speed: speed ? Number(speed) : null,
                     heading: heading ? Number(heading) : null,
                 },
@@ -59,6 +96,7 @@ const handleConnection = (socket, io) => {
                 longitude: upsertedLocation.longitude,
                 speed: upsertedLocation.speed,
                 updatedAt: upsertedLocation.updatedAt,
+                snapped: snapped.snapped,
             });
         }
         catch (error) {

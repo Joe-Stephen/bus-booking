@@ -6,6 +6,7 @@ import { RegisterUserInput, LoginUserInput } from "./auth.schema";
 import { sendVerificationEmail } from "../../utils/mailer";
 import { OAuth2Client } from "google-auth-library";
 import { env } from "../../config/env";
+import { ApiError } from "../../utils/ApiError";
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
@@ -16,7 +17,7 @@ export const authService = {
     });
 
     if (existingUser) {
-      throw new Error("Email already in use");
+      throw new ApiError(409, "Email already in use");
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -44,7 +45,7 @@ export const authService = {
     });
 
     if (!user) {
-      throw new Error("Invalid or expired verification token");
+      throw new ApiError(400, "Invalid or expired verification token");
     }
 
     await prisma.user.update({
@@ -64,17 +65,17 @@ export const authService = {
     });
 
     if (!user || !user.password) {
-      throw new Error("Invalid credentials");
+      throw new ApiError(401, "Invalid credentials");
     }
 
     const isPasswordValid = await bcrypt.compare(data.password, user.password!);
 
     if (!isPasswordValid) {
-      throw new Error("Invalid credentials");
+      throw new ApiError(401, "Invalid credentials");
     }
 
     if (!user.isEmailVerified) {
-      throw new Error("Please verify your email address before logging in");
+      throw new ApiError(401, "Please verify your email address before logging in");
     }
 
     const payload = { id: user.id, role: user.role };
@@ -108,11 +109,9 @@ export const authService = {
       const payload = { id: user.id, role: user.role };
       const newAccessToken = generateToken(payload);
       
-      // Optionally rotate the refresh token here, but keeping it simple and static for now.
-
       return { accessToken: newAccessToken };
     } catch (e) {
-      throw new Error("Invalid refresh token");
+      throw new ApiError(401, "Invalid refresh token");
     }
   },
 
@@ -126,7 +125,7 @@ export const authService = {
       const payload = ticket.getPayload();
       
       if (!payload || !payload.email) {
-        throw new Error("Invalid Google token");
+        throw new ApiError(401, "Invalid Google token");
       }
 
       const { email, name, sub: googleId } = payload;
@@ -142,7 +141,7 @@ export const authService = {
             email,
             name: name || "User",
             googleId,
-            isEmailVerified: true, // Google accounts don't need manual verification
+            isEmailVerified: true, 
             role: "USER"
           },
         });
@@ -168,9 +167,10 @@ export const authService = {
         accessToken,
         refreshToken,
       };
-    } catch (error) {
+    } catch (error: any) {
+       if (error instanceof ApiError) throw error;
        console.error(error);
-       throw new Error("Google authentication failed");
+       throw new ApiError(401, "Google authentication failed");
     }
   }
 };

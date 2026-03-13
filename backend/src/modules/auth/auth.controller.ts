@@ -10,9 +10,6 @@ export const authController = {
         data: result,
       });
     } catch (error: any) {
-      if (error.message === "Email already in use") {
-        return res.status(409).json({ status: "error", message: error.message });
-      }
       next(error);
     }
   },
@@ -26,9 +23,6 @@ export const authController = {
         data: result,
       });
     } catch (error: any) {
-      if (error.message === "Invalid or expired verification token") {
-        return res.status(400).json({ status: "error", message: error.message });
-      }
       next(error);
     }
   },
@@ -41,9 +35,6 @@ export const authController = {
         data: result,
       });
     } catch (error: any) {
-      if (error.message === "Invalid credentials" || error.message.includes("verify your email")) {
-        return res.status(401).json({ status: "error", message: error.message });
-      }
       next(error);
     }
   },
@@ -57,9 +48,6 @@ export const authController = {
         data: result,
       });
     } catch (error: any) {
-      if (error.message === "Invalid refresh token") {
-         return res.status(401).json({ status: "error", message: error.message });
-      }
       next(error);
     }
   },
@@ -73,7 +61,7 @@ export const authController = {
         data: result,
       });
     } catch (error: any) {
-      return res.status(401).json({ status: "error", message: error.message });
+      next(error);
     }
   }
 };

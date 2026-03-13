@@ -11,6 +11,7 @@ const jwt_1 = require("../../utils/jwt");
 const mailer_1 = require("../../utils/mailer");
 const google_auth_library_1 = require("google-auth-library");
 const env_1 = require("../../config/env");
+const ApiError_1 = require("../../utils/ApiError");
 const googleClient = new google_auth_library_1.OAuth2Client(env_1.env.GOOGLE_CLIENT_ID);
 exports.authService = {
     register: async (data) => {
@@ -18,7 +19,7 @@ exports.authService = {
             where: { email: data.email },
         });
         if (existingUser) {
-            throw new Error("Email already in use");
+            throw new ApiError_1.ApiError(409, "Email already in use");
         }
         const hashedPassword = await bcryptjs_1.default.hash(data.password, 10);
         const verificationToken = crypto_1.default.randomBytes(32).toString("hex");
@@ -40,7 +41,7 @@ exports.authService = {
             where: { verificationToken: token },
         });
         if (!user) {
-            throw new Error("Invalid or expired verification token");
+            throw new ApiError_1.ApiError(400, "Invalid or expired verification token");
         }
         await prisma_1.default.user.update({
             where: { id: user.id },
@@ -56,14 +57,14 @@ exports.authService = {
             where: { email: data.email },
         });
         if (!user || !user.password) {
-            throw new Error("Invalid credentials");
+            throw new ApiError_1.ApiError(401, "Invalid credentials");
         }
         const isPasswordValid = await bcryptjs_1.default.compare(data.password, user.password);
         if (!isPasswordValid) {
-            throw new Error("Invalid credentials");
+            throw new ApiError_1.ApiError(401, "Invalid credentials");
         }
         if (!user.isEmailVerified) {
-            throw new Error("Please verify your email address before logging in");
+            throw new ApiError_1.ApiError(401, "Please verify your email address before logging in");
         }
         const payload = { id: user.id, role: user.role };
         const accessToken = (0, jwt_1.generateToken)(payload);
@@ -89,11 +90,10 @@ exports.authService = {
             }
             const payload = { id: user.id, role: user.role };
             const newAccessToken = (0, jwt_1.generateToken)(payload);
-            // Optionally rotate the refresh token here, but keeping it simple and static for now.
             return { accessToken: newAccessToken };
         }
         catch (e) {
-            throw new Error("Invalid refresh token");
+            throw new ApiError_1.ApiError(401, "Invalid refresh token");
         }
     },
     googleAuth: async (tokenId) => {
@@ -104,7 +104,7 @@ exports.authService = {
             });
             const payload = ticket.getPayload();
             if (!payload || !payload.email) {
-                throw new Error("Invalid Google token");
+                throw new ApiError_1.ApiError(401, "Invalid Google token");
             }
             const { email, name, sub: googleId } = payload;
             let user = await prisma_1.default.user.findUnique({
@@ -117,7 +117,7 @@ exports.authService = {
                         email,
                         name: name || "User",
                         googleId,
-                        isEmailVerified: true, // Google accounts don't need manual verification
+                        isEmailVerified: true,
                         role: "USER"
                     },
                 });
@@ -143,8 +143,10 @@ exports.authService = {
             };
         }
         catch (error) {
+            if (error instanceof ApiError_1.ApiError)
+                throw error;
             console.error(error);
-            throw new Error("Google authentication failed");
+            throw new ApiError_1.ApiError(401, "Google authentication failed");
         }
     }
 };

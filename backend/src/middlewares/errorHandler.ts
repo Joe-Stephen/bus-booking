@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
 import { logError } from "./logger.middleware";
+import { ApiError } from "../utils/ApiError";
 
 export const errorHandler = (
   err: any,
@@ -9,45 +10,46 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  logError(`${req.method} ${req.path}`, err);
+  let error = err;
 
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      status: "error",
-      message: "Validation Error",
-      errors: (err as any).errors.map((e: any) => ({
+  // Convert non-ApiErrors to ApiErrors if necessary
+  if (!(error instanceof ApiError)) {
+    let statusCode = error.statusCode || 500;
+    let message = error.message || "Internal Server Error";
+
+    if (error instanceof ZodError) {
+      statusCode = 400;
+      message = "Validation Error";
+      const errors = error.issues.map((e: any) => ({
         path: e.path.join("."),
         message: e.message,
-      })),
-    });
-  }
-
-  // Handle Prisma Specific Errors
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    // Unique constraint violation
-    if (err.code === "P2002") {
-      const target = err.meta?.target as string[];
-      return res.status(409).json({
+      }));
+      return res.status(statusCode).json({
         status: "error",
-        message: `Duplicate field value: ${target?.join(", ")} already exists.`,
+        message,
+        errors,
       });
     }
-    
-    // Record not found
-    if (err.code === "P2025") {
-      return res.status(404).json({
-        status: "error",
-        message: "Record not found",
-      });
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        statusCode = 409;
+        const target = error.meta?.target as string[];
+        message = `Duplicate field value: ${target?.join(", ")} already exists.`;
+      } else if (error.code === "P2025") {
+        statusCode = 404;
+        message = "Record not found";
+      }
     }
+
+    error = new ApiError(statusCode, message, false, err.stack);
   }
 
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+  logError(`${req.method} ${req.path}`, error);
 
-  res.status(statusCode).json({
+  res.status(error.statusCode).json({
     status: "error",
-    message: message,
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    message: error.message,
+    ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
   });
 };

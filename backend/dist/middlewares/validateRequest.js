@@ -17,9 +17,9 @@ const validateRequest = (schema) => {
                 return res.status(400).json({
                     status: "error",
                     message: "Validation Error",
-                    errors: error.errors.map((e) => ({
-                        field: e.path.join("."),
-                        message: e.message,
+                    errors: error.issues.map((issue) => ({
+                        field: issue.path.join("."),
+                        message: issue.message,
                     })),
                 });
             }

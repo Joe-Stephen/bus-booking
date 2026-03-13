@@ -30,4 +30,35 @@ exports.trackingController = {
             next(error);
         }
     },
+    updateBusLocation: async (req, res, next) => {
+        try {
+            const { busId } = req.params;
+            const { latitude, longitude, speed, heading } = req.body;
+            const lat = Number(latitude);
+            const lng = Number(longitude);
+            if (isNaN(lat) || lat < -90 || lat > 90 || isNaN(lng) || lng < -180 || lng > 180) {
+                return res.status(400).json({ status: "error", message: "Invalid GPS coordinates" });
+            }
+            const location = await prisma_1.default.busLocation.upsert({
+                where: { busId: String(busId) },
+                update: {
+                    latitude: lat,
+                    longitude: lng,
+                    speed: speed != null ? Number(speed) : null,
+                    heading: heading != null ? Number(heading) : null,
+                },
+                create: {
+                    busId: String(busId),
+                    latitude: lat,
+                    longitude: lng,
+                    speed: speed != null ? Number(speed) : null,
+                    heading: heading != null ? Number(heading) : null,
+                },
+            });
+            res.status(200).json({ status: "success", data: location });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
 };

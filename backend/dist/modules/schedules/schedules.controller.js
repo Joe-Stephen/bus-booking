@@ -131,7 +131,7 @@ const getSchedulesByRoute = async (req, res) => {
             orderBy: { departureTime: "asc" },
         });
         // Add available seats to each schedule
-        const schedulesWithAvailability = schedules.map(s => ({
+        const schedulesWithAvailability = schedules.map((s) => ({
             ...s,
             availableSeats: s.bus.totalSeats - s._count.bookings,
             isPast: new Date(s.departureTime) < new Date(),
