@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation, Navigate } from "react-router-dom";
-import { Bus, Map, Calendar, LogOut, LayoutDashboard, ShieldCheck } from "lucide-react";
+import { Bus, Map, Calendar, LogOut, LayoutDashboard, ShieldCheck, User as UserIcon } from "lucide-react";
 import { getAuthUser, logout } from "../utils/auth";
 
 export default function AdminLayout() {
@@ -66,8 +66,12 @@ export default function AdminLayout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white shadow-sm h-16 flex items-center px-8 z-10">
+        <header className="bg-white shadow-sm h-16 flex items-center justify-between px-8 z-10">
           <h1 className="text-xl font-semibold text-slate-800">System Management</h1>
+          <Link to="/dashboard" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors">
+             <UserIcon className="w-4 h-4 mr-2" />
+             User View
+          </Link>
         </header>
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
