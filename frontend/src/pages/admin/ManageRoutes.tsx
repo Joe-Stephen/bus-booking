@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
+import { toast } from "sonner";
 import { Plus, MapPin } from "lucide-react";
 
 export default function ManageRoutes() {
@@ -26,6 +27,10 @@ export default function ManageRoutes() {
       queryClient.invalidateQueries({ queryKey: ["adminRoutes"] });
       setIsAdding(false);
       setForm({ source: "", destination: "", distance: 0 });
+      toast.success("Route created successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to create route");
     }
   });
 
@@ -42,6 +47,10 @@ export default function ManageRoutes() {
       setIsAdding(false);
       setEditingRouteId(null);
       setForm({ source: "", destination: "", distance: 0 });
+      toast.success("Route updated successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to update route");
     }
   });
 
@@ -51,6 +60,10 @@ export default function ManageRoutes() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminRoutes"] });
+      toast.success("Route deleted successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to delete route");
     }
   });
 
@@ -161,7 +174,12 @@ export default function ManageRoutes() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button onClick={() => handleEdit(route)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
-                  <button onClick={() => { if(confirm('Are you sure you want to delete this route?')) deleteMutation.mutate(route.id) }} className="text-red-600 hover:text-red-900">Delete</button>
+                  <button onClick={() => toast("Delete this route?", {
+                    action: {
+                      label: "Yes, Delete",
+                      onClick: () => deleteMutation.mutate(route.id)
+                    }
+                  })} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}

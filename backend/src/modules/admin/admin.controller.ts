@@ -319,7 +319,10 @@ export const adminController = {
       }
 
       res.status(200).json({ status: "success", message: "Schedule series/item deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === "P2003" || (error.message && error.message.includes("foreign key constraint"))) {
+         return res.status(400).json({ status: "error", message: "Cannot delete schedule: It has existing bookings." });
+      }
       next(error);
     }
   },

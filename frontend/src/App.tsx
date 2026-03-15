@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { getAuthUser } from "./utils/auth";
+import { Toaster } from "sonner";
 
 // Layouts
 import AuthLayout from "./layouts/AuthLayout";
@@ -35,8 +36,10 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
+    <>
+      <Toaster position="top-right" richColors closeButton />
+      <Router>
+        <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         
         {/* Auth Routes */}
@@ -65,6 +68,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </Router>
+      </Router>
+    </>
   );
 }

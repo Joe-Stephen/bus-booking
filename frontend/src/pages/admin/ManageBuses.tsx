@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
+import { toast } from "sonner";
 import { Plus, Bus as BusIcon, MapPin, ChevronDown, ChevronUp, Navigation, Clock } from "lucide-react";
 import { socket } from "../../services/socket";
 
@@ -27,6 +28,10 @@ export default function ManageBuses() {
       queryClient.invalidateQueries({ queryKey: ["adminBuses"] });
       setIsAdding(false);
       setForm({ name: "", totalSeats: 40 });
+      toast.success("Bus registered successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to register bus");
     }
   });
 
@@ -42,6 +47,10 @@ export default function ManageBuses() {
       setIsAdding(false);
       setEditingBusId(null);
       setForm({ name: "", totalSeats: 40 });
+      toast.success("Bus updated successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to update bus");
     }
   });
 
@@ -51,6 +60,10 @@ export default function ManageBuses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminBuses"] });
+      toast.success("Bus deleted successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to delete bus");
     }
   });
 
@@ -168,7 +181,12 @@ export default function ManageBuses() {
                       {locationPanelBusId === bus.id ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
                     </button>
                     <button onClick={() => handleEdit(bus)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
-                    <button onClick={() => { if(confirm('Are you sure you want to delete this bus?')) deleteMutation.mutate(bus.id) }} className="text-red-600 hover:text-red-900">Delete</button>
+                    <button onClick={() => toast("Delete this bus?", {
+                      action: {
+                        label: "Yes, Delete",
+                        onClick: () => deleteMutation.mutate(bus.id)
+                      }
+                    })} className="text-red-600 hover:text-red-900">Delete</button>
                   </td>
                 </tr>
                 {/* Location Panel Expanded Row */}

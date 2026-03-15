@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
+import { toast } from "sonner";
 import { CalendarDays, XCircle, Clock, RefreshCw, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -28,9 +29,11 @@ export default function MyBookings() {
       queryClient.invalidateQueries({ queryKey: ["myBookings"] });
       queryClient.invalidateQueries({ queryKey: ["myBookingsSummary"] });
       setCancelingId(null);
+      toast.success("Booking cancelled successfully");
     },
-    onError: () => {
+    onError: (err: any) => {
       setCancelingId(null);
+      toast.error(err.response?.data?.message || "Failed to cancel booking");
     }
   });
 
@@ -43,19 +46,23 @@ export default function MyBookings() {
       queryClient.invalidateQueries({ queryKey: ["myBookings"] });
       queryClient.invalidateQueries({ queryKey: ["myBookingsSummary"] });
       setChangingBooking(null);
-      alert("Schedule changed successfully!");
+      toast.success("Schedule changed successfully!");
     },
     onError: (err: any) => {
-      // @ts-ignore
-      alert(err.response?.data?.error || err.response?.data?.message || "Failed to change schedule.");
+      toast.error(err.response?.data?.error || err.response?.data?.message || "Failed to change schedule.");
     }
   });
 
   const handleCancel = (id: string) => {
-    if (confirm("Are you sure you want to cancel this booking?")) {
-      setCancelingId(id);
-      cancelMutation.mutate(id);
-    }
+    toast("Are you sure you want to cancel this booking?", {
+      action: {
+        label: "Yes, Cancel",
+        onClick: () => {
+          setCancelingId(id);
+          cancelMutation.mutate(id);
+        }
+      }
+    });
   };
 
   const toggleTracking = (bookingId: string) => {

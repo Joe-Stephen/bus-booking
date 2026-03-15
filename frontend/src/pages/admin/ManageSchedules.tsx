@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
+import { toast } from "sonner";
 import { Plus, CalendarDays, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
@@ -32,6 +33,10 @@ export default function ManageSchedules() {
       queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
       setIsAdding(false);
       setForm({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0, repeatType: 1 });
+      toast.success("Schedule deployed successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to deploy schedule");
     }
   });
 
@@ -48,7 +53,11 @@ export default function ManageSchedules() {
       queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
       setIsAdding(false);
       setEditingScheduleId(null);
-      setForm({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0 });
+      setForm({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0, repeatType: 1 });
+      toast.success("Schedule updated successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to update schedule");
     }
   });
 
@@ -58,6 +67,10 @@ export default function ManageSchedules() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
+      toast.success("Schedule deleted successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to delete schedule");
     }
   });
 
@@ -67,6 +80,10 @@ export default function ManageSchedules() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
+      toast.success("Schedule paused successfully");
+    },
+    onError: (error: any) => {
+       toast.error(error.response?.data?.message || "Failed to pause schedule");
     }
   });
 
@@ -76,6 +93,10 @@ export default function ManageSchedules() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
+      toast.success("Schedule resumed successfully");
+    },
+    onError: (error: any) => {
+       toast.error(error.response?.data?.message || "Failed to resume schedule");
     }
   });
 
@@ -274,7 +295,12 @@ export default function ManageSchedules() {
                     <button onClick={() => pauseMutation.mutate(schedule.id)} className="text-amber-600 hover:text-amber-900 mr-4">{schedule.isGroup ? "Pause Series" : "Pause"}</button>
                   )}
                   <button onClick={() => handleEdit(schedule)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
-                  <button onClick={() => { if(confirm('Are you sure you want to delete this schedule item?')) deleteMutation.mutate(schedule.id) }} className="text-red-600 hover:text-red-900">Delete</button>
+                  <button onClick={() => toast("Delete this schedule item?", {
+                    action: {
+                      label: "Yes, Delete",
+                      onClick: () => deleteMutation.mutate(schedule.id)
+                    }
+                  })} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}
