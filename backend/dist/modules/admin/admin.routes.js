@@ -25,4 +25,6 @@ router.post("/schedule", (0, validateRequest_1.validateRequest)(admin_schema_1.c
 router.get("/schedules", admin_controller_1.adminController.getSchedules);
 router.put("/schedule/:id", (0, validateRequest_1.validateRequest)(admin_schema_1.updateScheduleSchema), admin_controller_1.adminController.updateSchedule);
 router.delete("/schedule/:id", admin_controller_1.adminController.deleteSchedule);
+router.patch("/schedule/:id/pause", admin_controller_1.adminController.pauseSchedule);
+router.patch("/schedule/:id/resume", admin_controller_1.adminController.resumeSchedule);
 exports.default = router;

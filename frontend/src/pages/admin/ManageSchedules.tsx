@@ -8,7 +8,7 @@ export default function ManageSchedules() {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
-  const [form, setForm] = useState({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0 });
+  const [form, setForm] = useState({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0, repeatType: 1 });
 
   const { data: schedules, isLoading } = useQuery({
     queryKey: ["adminSchedules"],
@@ -24,13 +24,14 @@ export default function ManageSchedules() {
           ...form,
           departureTime: new Date(form.departureTime).toISOString(),
           arrivalTime: new Date(form.arrivalTime).toISOString(),
-          price: Number(form.price)
+          price: Number(form.price),
+          repeatType: Number(form.repeatType)
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
       setIsAdding(false);
-      setForm({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0 });
+      setForm({ busId: "", routeId: "", departureTime: "", arrivalTime: "", price: 0, repeatType: 1 });
     }
   });
 
@@ -54,6 +55,24 @@ export default function ManageSchedules() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiClient.delete(`/admin/schedule/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
+    }
+  });
+
+  const pauseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.patch(`/admin/schedule/${id}/pause`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
+    }
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.patch(`/admin/schedule/${id}/resume`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminSchedules"] });
@@ -111,7 +130,7 @@ export default function ManageSchedules() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div className="lg:col-span-1">
               <label className="block text-sm font-medium text-slate-700">Assign Bus</label>
               <select
@@ -163,6 +182,19 @@ export default function ManageSchedules() {
                 onChange={e => setForm({...form, price: Number(e.target.value)})}
               />
             </div>
+            {!editingScheduleId && (
+            <div className="lg:col-span-1">
+              <label className="block text-sm font-medium text-slate-700">Repeat</label>
+              <select
+                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border outline-none bg-white"
+                value={form.repeatType || 1}
+                onChange={e => setForm({...form, repeatType: Number(e.target.value)})}
+              >
+                <option value={1}>Format: Once</option>
+                <option value={2}>Daily runs</option>
+              </select>
+            </div>
+            )}
           </div>
           <div className="mt-6 flex justify-end space-x-3 border-t border-slate-100 pt-4">
             <button onClick={handleCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
@@ -195,7 +227,15 @@ export default function ManageSchedules() {
                       <CalendarDays className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-slate-900">{schedule.route?.source} → {schedule.route?.destination}</div>
+                      <div className="text-sm font-medium text-slate-900 flex items-center gap-1.5">
+                        <span>{schedule.route?.source} → {schedule.route?.destination}</span>
+                        {schedule.repeatType === 2 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">Daily</span>
+                        )}
+                        {schedule.isPaused && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">Paused</span>
+                        )}
+                      </div>
                       <div className="text-xs text-slate-500 font-medium">Bus: {schedule.bus?.name || schedule.bus?.registrationNo}</div>
                     </div>
                   </div>
@@ -228,8 +268,13 @@ export default function ManageSchedules() {
                    <span className="font-mono text-emerald-600 font-semibold">${schedule.price}</span> Base Rate
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  {schedule.isPaused ? (
+                    <button onClick={() => resumeMutation.mutate(schedule.id)} className="text-emerald-600 hover:text-emerald-900 mr-4">Resume</button>
+                  ) : (
+                    <button onClick={() => pauseMutation.mutate(schedule.id)} className="text-amber-600 hover:text-amber-900 mr-4">{schedule.isGroup ? "Pause Series" : "Pause"}</button>
+                  )}
                   <button onClick={() => handleEdit(schedule)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
-                  <button onClick={() => { if(confirm('Are you sure you want to delete this schedule?')) deleteMutation.mutate(schedule.id) }} className="text-red-600 hover:text-red-900">Delete</button>
+                  <button onClick={() => { if(confirm('Are you sure you want to delete this schedule item?')) deleteMutation.mutate(schedule.id) }} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}

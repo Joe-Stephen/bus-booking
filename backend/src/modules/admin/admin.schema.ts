@@ -22,6 +22,7 @@ export const createScheduleSchema = z.object({
     departureTime: z.string().datetime("Must be a valid ISO 8601 date string"),
     arrivalTime: z.string().datetime("Must be a valid ISO 8601 date string"),
     price: z.number().positive("Price must be a positive number"),
+    repeatType: z.number().int().min(1).max(2).optional(),
   }).refine((data) => new Date(data.arrivalTime) > new Date(data.departureTime), {
     message: "Arrival time must be after departure time",
     path: ["arrivalTime"],

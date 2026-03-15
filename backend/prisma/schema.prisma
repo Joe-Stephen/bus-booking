@@ -57,6 +57,9 @@ model Schedule {
   departureTime DateTime
   arrivalTime   DateTime
   price         Float
+  repeatType    Int      @default(1)
+  groupId       String?
+  isPaused      Boolean  @default(false)
 
   route    Route     @relation(fields: [routeId], references: [id])
   bus      Bus       @relation(fields: [busId], references: [id])

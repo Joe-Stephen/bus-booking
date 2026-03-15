@@ -45,7 +45,7 @@ export const getSchedules = async (
   try {
     const { origin, destination, date } = req.query;
 
-    const where: any = {};
+    const where: any = { isPaused: false };
 
     if (origin || destination) {
       where.route = {};
@@ -139,6 +139,7 @@ export const getSchedulesByRoute = async (
     const schedules = await prisma.schedule.findMany({
       where: {
         routeId: String(id),
+        isPaused: false,
       },
       include: {
         bus: true,
