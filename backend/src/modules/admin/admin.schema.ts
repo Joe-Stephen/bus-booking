@@ -17,8 +17,10 @@ export const createRouteSchema = z.object({
 
 export const createScheduleSchema = z.object({
   body: z.object({
-    busId: z.string().uuid("Invalid bus ID format"),
-    routeId: z.string().uuid("Invalid route ID format"),
+    busId: z.string().min(1, "Bus ID is required"),
+    routeId: z.string().min(1, "Route ID is required"),
+    // busId: z.string().uuid("Invalid bus ID format"),
+    // routeId: z.string().uuid("Invalid route ID format"),
     departureTime: z.string().datetime("Must be a valid ISO 8601 date string"),
     arrivalTime: z.string().datetime("Must be a valid ISO 8601 date string"),
     price: z.number().positive("Price must be a positive number"),
@@ -52,8 +54,8 @@ export const updateRouteSchema = z.object({
 
 export const updateScheduleSchema = z.object({
   body: z.object({
-    busId: z.string().uuid("Invalid bus ID format").optional(),
-    routeId: z.string().uuid("Invalid route ID format").optional(),
+    busId: z.string().min(1).optional(),
+    routeId: z.string().min(1).optional(),
     departureTime: z.string().datetime("Must be a valid ISO 8601 date string").optional(),
     arrivalTime: z.string().datetime("Must be a valid ISO 8601 date string").optional(),
     price: z.number().positive("Price must be a positive number").optional(),
