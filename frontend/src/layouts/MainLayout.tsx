@@ -16,6 +16,7 @@ export default function MainLayout() {
     { name: "Dashboard", path: "/dashboard", icon: <UserIcon className="w-5 h-5 mr-2" /> },
     { name: "Routes", path: "/routes", icon: <Map className="w-5 h-5 mr-2" /> },
     { name: "My Bookings", path: "/my-bookings", icon: <Clock className="w-5 h-5 mr-2" /> },
+    ...(user?.role === "ADMIN" ? [{ name: "Admin Panel", path: "/admin", icon: <Bus className="w-5 h-5 mr-2 text-indigo-600" /> }] : [])
   ];
 
   return (
