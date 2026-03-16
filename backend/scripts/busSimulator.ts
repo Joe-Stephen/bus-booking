@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const SERVER_URL = process.env.SOCKET_URL || "ws://localhost:5000";
 
-// A mock route in New York grid
+// A mock route in Kochi grid
 const mockRoute = [
   [10.004542, 76.375369], // Start 10.004542, 76.375369
   [10.004528, 76.37508], //10.004528, 76.375080
